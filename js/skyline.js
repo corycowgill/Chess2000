@@ -311,108 +311,816 @@ function mat(color, opts = {}) {
 // ---- Wrigley Field — brick stadium, green roof, manual scoreboard,
 //      red marquee at home plate. The marquee + scoreboard are the
 //      silhouette-defining features. ----
+// ---- Wrigley Field — unmistakable: wide low Friendly-Confines footprint
+//      with the dark-green steel grandstand, dirt diamond, grass outfield,
+//      warning track, ivy-covered brick outfield walls, stepped left/center/
+//      right bleachers, the famous centerfield manual scoreboard with the
+//      circular clock and flag-row above, light stanchions, and the red
+//      marquee at the Clark & Addison entrance. ----
 function createWrigleyField() {
   const g = new THREE.Group();
-  const BRICK = mat(0x7a3d2c, { roughness: 0.9 });
-  const GREEN = mat(0x305a32, { roughness: 0.75 });
+  // ---- Wrigley palette ----
+  const BRICK = mat(0x8a4234, { roughness: 0.92 });
+  const IVY = mat(0x2d5236, { roughness: 0.88 });
+  const IVY_DEEP = mat(0x224028, { roughness: 0.9 });
+  const STEEL_GREEN = mat(0x1d3a28, { roughness: 0.55, metalness: 0.3 });
+  const STEEL_DARK = mat(0x10241a, { roughness: 0.5, metalness: 0.35 });
+  const CONCRETE = mat(0xbab3a3, { roughness: 0.85 });
+  const GRASS = mat(0x3c6b32, { roughness: 0.92 });
+  const GRASS_OUT = mat(0x4a7a3c, { roughness: 0.92 });
+  const DIRT = mat(0x9a7a48, { roughness: 0.95 });
+  const WARN = mat(0xc4a06a, { roughness: 0.95 });
+  const SEAT_GREEN = mat(0x244430, { roughness: 0.7 });
+  const WHITE = mat(0xf4eed8, { roughness: 0.7 });
   const RED = mat(0xb3242b, {
     roughness: 0.45,
     emissive: 0x4a0e12,
-    emissiveIntensity: 0.6,
+    emissiveIntensity: 0.55,
+  });
+  const CREAM_LIT = mat(0xfffaee, {
+    emissive: 0xfff0d0,
+    emissiveIntensity: 0.7,
   });
 
-  // Lower stands (brick block)
-  const stands = nonShadow(new THREE.Mesh(new THREE.BoxGeometry(9, 2.6, 5.5), BRICK));
-  stands.position.y = 1.3;
-  g.add(stands);
+  // ===== FIELD =====
+  // Grass outfield — fan shape from home plate (south) curving north.
+  // Home plate at z=+4.2, outfield wall curving around z=-3 to z=-4.
+  const outfield = new THREE.Shape();
+  outfield.moveTo(0, 4.2);
+  outfield.lineTo(-5.5, 1.2);
+  // curve the outfield arc
+  for (let i = 0; i <= 14; i++) {
+    const t = i / 14;
+    const a = Math.PI + t * Math.PI; // 180° → 360°
+    outfield.lineTo(Math.cos(a) * 5.5, Math.sin(a) * 4.0 - 0.6);
+  }
+  outfield.lineTo(5.5, 1.2);
+  outfield.lineTo(0, 4.2);
+  outfield.closePath();
+  const grassMesh = nonShadow(
+    new THREE.Mesh(new THREE.ShapeGeometry(outfield), GRASS_OUT)
+  );
+  grassMesh.rotation.x = -Math.PI / 2;
+  grassMesh.position.set(0, 0.04, 0);
+  g.add(grassMesh);
 
-  // Upper deck setback
-  const upper = nonShadow(new THREE.Mesh(new THREE.BoxGeometry(8.2, 1.0, 4.8), mat(0x6a3326, { roughness: 0.9 })));
-  upper.position.y = 3.1;
+  // Warning track — a brown band just inside the outfield wall arc
+  const trackShape = new THREE.Shape();
+  for (let i = 0; i <= 22; i++) {
+    const t = i / 22;
+    const a = Math.PI + t * Math.PI;
+    trackShape.lineTo(Math.cos(a) * 5.5, Math.sin(a) * 4.0 - 0.6);
+  }
+  const trackHole = new THREE.Path();
+  for (let i = 22; i >= 0; i--) {
+    const t = i / 22;
+    const a = Math.PI + t * Math.PI;
+    trackHole.lineTo(Math.cos(a) * 4.8, Math.sin(a) * 3.4 - 0.6);
+  }
+  trackShape.holes.push(trackHole);
+  const trackMesh = nonShadow(
+    new THREE.Mesh(new THREE.ShapeGeometry(trackShape), WARN)
+  );
+  trackMesh.rotation.x = -Math.PI / 2;
+  trackMesh.position.set(0, 0.05, 0);
+  g.add(trackMesh);
+
+  // Dirt infield (diamond)
+  const diamond = new THREE.Shape();
+  diamond.moveTo(0, 4.0);
+  diamond.lineTo(-2.0, 1.6);
+  diamond.lineTo(0, -0.8);
+  diamond.lineTo(2.0, 1.6);
+  diamond.closePath();
+  const dirtMesh = nonShadow(
+    new THREE.Mesh(new THREE.ShapeGeometry(diamond), DIRT)
+  );
+  dirtMesh.rotation.x = -Math.PI / 2;
+  dirtMesh.position.set(0, 0.06, 0);
+  g.add(dirtMesh);
+
+  // Grass infield patch (the inner cutout grass between bases)
+  const infieldGrass = new THREE.Shape();
+  infieldGrass.moveTo(0, 3.2);
+  infieldGrass.lineTo(-1.3, 1.5);
+  infieldGrass.lineTo(0, -0.1);
+  infieldGrass.lineTo(1.3, 1.5);
+  infieldGrass.closePath();
+  const infieldGrassMesh = nonShadow(
+    new THREE.Mesh(new THREE.ShapeGeometry(infieldGrass), GRASS)
+  );
+  infieldGrassMesh.rotation.x = -Math.PI / 2;
+  infieldGrassMesh.position.set(0, 0.07, 0);
+  g.add(infieldGrassMesh);
+
+  // Pitcher's mound
+  const mound = nonShadow(
+    new THREE.Mesh(new THREE.CircleGeometry(0.3, 14), DIRT)
+  );
+  mound.rotation.x = -Math.PI / 2;
+  mound.position.set(0, 0.075, 1.2);
+  g.add(mound);
+
+  // Foul lines (chalked from home plate out past 1B and 3B)
+  for (const dir of [-1, 1]) {
+    const line = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.01, 4.5), WHITE)
+    );
+    line.position.set(dir * 1.7, 0.08, 1.5);
+    line.rotation.y = dir * 0.62;
+    g.add(line);
+  }
+
+  // ===== IVY-COVERED BRICK OUTFIELD WALL =====
+  // Curved wall hugging the outfield arc, with ivy on top.
+  const wallSegs = 18;
+  for (let i = 0; i <= wallSegs; i++) {
+    const t = i / wallSegs;
+    const a = Math.PI + t * Math.PI;
+    const x = Math.cos(a) * 5.4;
+    const z = Math.sin(a) * 3.9 - 0.6;
+    // Brick wall segment
+    const brick = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.55, 0.16), BRICK)
+    );
+    brick.position.set(x, 0.28, z);
+    // Face inward (toward home plate)
+    brick.rotation.y = -a + Math.PI / 2;
+    g.add(brick);
+
+    // Dense ivy on top of and overhanging the wall
+    const ivy = nonShadow(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(0.72, 0.5, 0.22),
+        i % 3 === 0 ? IVY_DEEP : IVY
+      )
+    );
+    ivy.position.set(x, 0.36, z);
+    ivy.rotation.y = -a + Math.PI / 2;
+    g.add(ivy);
+
+    // Occasional ivy "tufts" cascading down
+    if (i % 2 === 0) {
+      const tuft = nonShadow(
+        new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), IVY)
+      );
+      tuft.position.set(x, 0.4, z);
+      tuft.scale.set(1.0, 0.6, 0.4);
+      tuft.rotation.y = -a + Math.PI / 2;
+      g.add(tuft);
+    }
+  }
+
+  // ===== STEPPED OUTFIELD BLEACHERS =====
+  // Four risers each for left, center, right
+  function bleacherSection(centerX, centerZ, baseW, depth, rows, faceAngle) {
+    const sec = new THREE.Group();
+    for (let r = 0; r < rows; r++) {
+      const step = nonShadow(
+        new THREE.Mesh(
+          new THREE.BoxGeometry(baseW, 0.32, depth),
+          SEAT_GREEN
+        )
+      );
+      step.position.set(0, 0.4 + r * 0.28, -r * (depth * 0.85));
+      sec.add(step);
+
+      // Seat texture (tiny seat bumps)
+      for (let s = -2; s <= 2; s++) {
+        const seat = nonShadow(
+          new THREE.Mesh(
+            new THREE.BoxGeometry(baseW * 0.15, 0.1, depth * 0.4),
+            mat(0x182a1c, { roughness: 0.6 })
+          )
+        );
+        seat.position.set(s * (baseW * 0.2), 0.6 + r * 0.28, -r * (depth * 0.85));
+        sec.add(seat);
+      }
+    }
+    // Concrete riser support underneath
+    const support = nonShadow(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(baseW + 0.1, 0.5, depth * (rows + 0.5)),
+        CONCRETE
+      )
+    );
+    support.position.set(0, 0.15, -depth * (rows - 1) * 0.42);
+    sec.add(support);
+
+    sec.position.set(centerX, 0, centerZ);
+    sec.rotation.y = faceAngle;
+    return sec;
+  }
+
+  // Center bleachers: largest section, behind centerfield wall, facing south
+  g.add(bleacherSection(0, -3.8, 4.4, 0.7, 5, 0));
+  // Left field bleachers, angled
+  g.add(bleacherSection(-4.4, -2.6, 2.8, 0.65, 4, 0.6));
+  // Right field bleachers, mirrored angle
+  g.add(bleacherSection(4.4, -2.6, 2.8, 0.65, 4, -0.6));
+
+  // ===== GRANDSTAND — wide, low, dark green steel framing =====
+  // Lower bowl wraps three sides of the infield (home + 1B + 3B sides).
+  // Behind home plate (south wall — entrance side, but tall behind home)
+  const homeBowl = nonShadow(
+    new THREE.Mesh(new THREE.BoxGeometry(12, 1.6, 1.6), STEEL_GREEN)
+  );
+  homeBowl.position.set(0, 0.8, 5.0);
+  g.add(homeBowl);
+
+  // First base side (east, +x)
+  const firstSide = nonShadow(
+    new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.4, 6.4), STEEL_GREEN)
+  );
+  firstSide.position.set(6.4, 0.7, 1.5);
+  g.add(firstSide);
+
+  // Third base side (west, -x)
+  const thirdSide = nonShadow(
+    new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.4, 6.4), STEEL_GREEN)
+  );
+  thirdSide.position.set(-6.4, 0.7, 1.5);
+  g.add(thirdSide);
+
+  // Upper deck — recessed and slightly taller, behind home plate only
+  const upper = nonShadow(
+    new THREE.Mesh(new THREE.BoxGeometry(10, 0.9, 1.4), STEEL_GREEN)
+  );
+  upper.position.set(0, 2.1, 5.0);
   g.add(upper);
 
-  // Iconic green roof line
-  const roof = nonShadow(new THREE.Mesh(new THREE.BoxGeometry(9.2, 0.35, 5.7), GREEN));
-  roof.position.y = 3.78;
-  g.add(roof);
+  // Continuous dark green ROOF visor over upper deck + sides
+  const roofHome = nonShadow(
+    new THREE.Mesh(new THREE.BoxGeometry(12.4, 0.22, 1.8), STEEL_DARK)
+  );
+  roofHome.position.set(0, 2.7, 5.0);
+  g.add(roofHome);
+  const roofE = nonShadow(
+    new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.22, 6.8), STEEL_DARK)
+  );
+  roofE.position.set(6.4, 1.5, 1.5);
+  g.add(roofE);
+  const roofW = nonShadow(
+    new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.22, 6.8), STEEL_DARK)
+  );
+  roofW.position.set(-6.4, 1.5, 1.5);
+  g.add(roofW);
 
-  // Manual scoreboard (centerfield, very recognizable green block)
-  const scoreboard = nonShadow(new THREE.Mesh(
-    new THREE.BoxGeometry(2.4, 2.0, 0.5),
-    mat(0x2c4d2c, { emissive: 0x141d11, emissiveIntensity: 0.45 })
-  ));
-  scoreboard.position.set(-3, 5.0, 1.4);
-  g.add(scoreboard);
+  // Exposed steel vertical girders on the home plate facade (Wrigley's
+  // signature look — visible structural columns at regular intervals)
+  for (let i = -5; i <= 5; i++) {
+    const girder = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.7, 0.12), STEEL_DARK)
+    );
+    girder.position.set(i * 1.0, 0.85, 4.22);
+    g.add(girder);
+  }
 
-  // Clock face on the scoreboard
-  const clock = nonShadow(new THREE.Mesh(
-    new THREE.CircleGeometry(0.45, 16),
-    mat(0xfffaee, { emissive: 0xfff8e0, emissiveIntensity: 0.55 })
-  ));
-  clock.position.set(-3, 5.85, 1.66);
-  g.add(clock);
+  // ===== CENTERFIELD MANUAL SCOREBOARD =====
+  // Wide green panel with vertical inning slots, supported on steel
+  // pillars, with the famous circular clock and flag row above.
+  const sbX = 0;
+  const sbZ = -5.2;
+  const sbBaseY = 2.8;
 
-  // ---- The signature red marquee at the entrance ----
-  // It's the trapezoidal sign that says WRIGLEY FIELD HOME OF CHICAGO CUBS
-  const marquee = nonShadow(new THREE.Mesh(new THREE.BoxGeometry(3.6, 2.4, 0.6), RED));
-  marquee.position.set(0, 1.4, 2.95);
+  // Steel support legs
+  for (const x of [-2.0, 2.0]) {
+    const leg = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(0.12, sbBaseY, 0.12), STEEL_DARK)
+    );
+    leg.position.set(sbX + x, sbBaseY / 2, sbZ);
+    g.add(leg);
+  }
+
+  // Main scoreboard body — wide and dark green
+  const sbBody = nonShadow(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(5.4, 2.1, 0.5),
+      mat(0x2c4d2c, { emissive: 0x141d11, emissiveIntensity: 0.45 })
+    )
+  );
+  sbBody.position.set(sbX, sbBaseY + 1.05, sbZ);
+  g.add(sbBody);
+
+  // Inning panel grid on the front face — two rows (home/visitor) of
+  // 9 dark slot panels for hand-turned innings
+  for (let row = 0; row < 2; row++) {
+    for (let col = 0; col < 9; col++) {
+      const panel = nonShadow(
+        new THREE.Mesh(
+          new THREE.BoxGeometry(0.42, 0.6, 0.05),
+          mat(0x1a2e1a, { emissive: 0x0a1108, emissiveIntensity: 0.4 })
+        )
+      );
+      panel.position.set(sbX - 1.8 + col * 0.5, sbBaseY + 1.5 - row * 0.75, sbZ + 0.27);
+      g.add(panel);
+    }
+  }
+  // Team-name plaques on the left
+  for (let row = 0; row < 2; row++) {
+    const name = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.6, 0.05), CREAM_LIT)
+    );
+    name.position.set(sbX - 2.45, sbBaseY + 1.5 - row * 0.75, sbZ + 0.27);
+    g.add(name);
+  }
+
+  // ---- Circular Wrigley clock ABOVE the scoreboard ----
+  const clockR = 0.62;
+  const clockHousing = nonShadow(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(clockR + 0.07, clockR + 0.07, 0.22, 24),
+      STEEL_DARK
+    )
+  );
+  clockHousing.rotation.x = Math.PI / 2;
+  clockHousing.position.set(sbX, sbBaseY + 2.55, sbZ - 0.05);
+  g.add(clockHousing);
+
+  const clockFace = nonShadow(
+    new THREE.Mesh(
+      new THREE.CircleGeometry(clockR, 28),
+      mat(0xf4eed8, { emissive: 0xfff0c0, emissiveIntensity: 0.55 })
+    )
+  );
+  clockFace.position.set(sbX, sbBaseY + 2.55, sbZ + 0.06);
+  g.add(clockFace);
+
+  // Clock numerals / hour ticks
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    const tick = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.1, 0.02), STEEL_DARK)
+    );
+    tick.position.set(
+      sbX + Math.sin(a) * clockR * 0.86,
+      sbBaseY + 2.55 + Math.cos(a) * clockR * 0.86,
+      sbZ + 0.08
+    );
+    tick.rotation.z = -a;
+    g.add(tick);
+  }
+
+  // Hands (a frozen "game time")
+  const hourHand = nonShadow(
+    new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.35, 0.02), STEEL_DARK)
+  );
+  hourHand.position.set(sbX, sbBaseY + 2.55, sbZ + 0.09);
+  hourHand.rotation.z = -0.4;
+  g.add(hourHand);
+  const minHand = nonShadow(
+    new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.48, 0.02), STEEL_DARK)
+  );
+  minHand.position.set(sbX, sbBaseY + 2.55, sbZ + 0.09);
+  minHand.rotation.z = 1.1;
+  g.add(minHand);
+
+  // Flagpole row on top of the scoreboard (division standings flags)
+  for (let i = -2; i <= 2; i++) {
+    const pole = nonShadow(
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(0.02, 0.02, 0.9, 6),
+        STEEL_DARK
+      )
+    );
+    pole.position.set(sbX + i * 0.6, sbBaseY + 3.45, sbZ);
+    g.add(pole);
+    const flag = nonShadow(
+      new THREE.Mesh(
+        new THREE.PlaneGeometry(0.28, 0.18),
+        i === 0 || Math.abs(i) === 2 ? RED : CREAM_LIT
+      )
+    );
+    flag.position.set(sbX + i * 0.6 + 0.15, sbBaseY + 3.7, sbZ);
+    g.add(flag);
+  }
+
+  // ===== Red Marquee at Clark & Addison entrance (south side) =====
+  const marquee = nonShadow(
+    new THREE.Mesh(new THREE.BoxGeometry(3.4, 2.2, 0.55), RED)
+  );
+  marquee.position.set(0, 1.1, 6.0);
   g.add(marquee);
 
-  // Cream text band suggesting "WRIGLEY FIELD"
-  const textBand = nonShadow(new THREE.Mesh(
-    new THREE.BoxGeometry(3.3, 0.55, 0.05),
-    mat(0xfffaee, { emissive: 0xfff0d0, emissiveIntensity: 0.75 })
-  ));
-  textBand.position.set(0, 1.95, 3.26);
+  const textBand = nonShadow(
+    new THREE.Mesh(new THREE.BoxGeometry(3.1, 0.5, 0.05), CREAM_LIT)
+  );
+  textBand.position.set(0, 1.55, 6.28);
   g.add(textBand);
 
-  // Lower triangular point (the inverted V at the bottom of the marquee)
+  // Inverted-V point on the bottom of the marquee
   const pointGeo = new THREE.BufferGeometry();
   pointGeo.setAttribute(
     "position",
     new THREE.BufferAttribute(
-      new Float32Array([-1.4, 0, 0, 1.4, 0, 0, 0, -0.9, 0]),
+      new Float32Array([-1.2, 0, 0, 1.2, 0, 0, 0, -0.75, 0]),
       3
     )
   );
   pointGeo.setIndex([0, 1, 2]);
   pointGeo.computeVertexNormals();
   const point = nonShadow(
-    new THREE.Mesh(pointGeo, new THREE.MeshStandardMaterial({
-      color: 0xb3242b,
-      roughness: 0.45,
-      emissive: 0x4a0e12,
-      emissiveIntensity: 0.6,
-      side: THREE.DoubleSide,
-    }))
+    new THREE.Mesh(
+      pointGeo,
+      new THREE.MeshStandardMaterial({
+        color: 0xb3242b,
+        roughness: 0.45,
+        emissive: 0x4a0e12,
+        emissiveIntensity: 0.55,
+        side: THREE.DoubleSide,
+      })
+    )
   );
-  point.position.set(0, 0.3, 3.27);
+  point.position.set(0, 0.05, 6.29);
   g.add(point);
 
-  // Light stanchions
-  for (const x of [-3.8, 0, 3.8]) {
-    const pole = nonShadow(new THREE.Mesh(
-      new THREE.CylinderGeometry(0.05, 0.05, 4.5, 6),
-      mat(0x222628)
-    ));
-    pole.position.set(x, 2.25, 2.2);
+  // ===== Light stanchions (added to Wrigley in 1988) =====
+  for (const x of [-5.5, -1.8, 1.8, 5.5]) {
+    const pole = nonShadow(
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(0.05, 0.05, 4.6, 6),
+        STEEL_DARK
+      )
+    );
+    pole.position.set(x, 2.3, 3.0);
     g.add(pole);
-    const lights = nonShadow(new THREE.Mesh(
-      new THREE.BoxGeometry(0.8, 0.22, 0.22),
-      mat(0xfff0c0, { emissive: 0xffd680, emissiveIntensity: 0.7 })
-    ));
-    lights.position.set(x, 4.5, 2.2);
-    g.add(lights);
+    const rig = nonShadow(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(0.85, 0.2, 0.25),
+        mat(0xfff0c0, { emissive: 0xffd680, emissiveIntensity: 0.7 })
+      )
+    );
+    rig.position.set(x, 4.6, 3.0);
+    g.add(rig);
   }
 
-  // Green field strip in front
-  const field = nonShadow(new THREE.Mesh(
-    new THREE.PlaneGeometry(9, 4),
-    mat(0x3a6c34, { roughness: 0.9 })
-  ));
-  field.rotation.x = -Math.PI / 2;
-  field.position.set(0, 0.005, 5);
-  g.add(field);
+  return g;
+}
+
+// ---- Wrigleyville rooftops — 3-story brick walk-ups across from
+//      Wrigley with rooftop bleachers and wooden water tanks. ----
+function createWrigleyvilleRooftops() {
+  const g = new THREE.Group();
+  const BRICK_RED = mat(0x8a4234, { roughness: 0.92 });
+  const BRICK_BROWN = mat(0x705241, { roughness: 0.92 });
+  const STONE_TRIM = mat(0xc9c0a4, { roughness: 0.85 });
+  const ROOF_DARK = mat(0x2a2730, { roughness: 0.85 });
+  const WOOD = mat(0x6b4830, { roughness: 0.85 });
+  const WOOD_DARK = mat(0x4a3025, { roughness: 0.88 });
+  const WINDOW = mat(0x2a3548, { emissive: 0x0a1422, emissiveIntensity: 0.4 });
+  const SEAT_BLUE = mat(0x4a4078, { roughness: 0.6 });
+
+  // Six walk-up buildings in a row, each with a rooftop feature
+  const buildings = [
+    { x: -8, w: 2.3, d: 1.5, h: 2.9, top: "bleachers", brick: BRICK_RED },
+    { x: -5.0, w: 2.2, d: 1.6, h: 3.1, top: "water", brick: BRICK_BROWN },
+    { x: -1.8, w: 2.5, d: 1.5, h: 2.7, top: "bleachers", brick: BRICK_RED },
+    { x: 1.4, w: 2.2, d: 1.6, h: 3.3, top: "water", brick: BRICK_BROWN },
+    { x: 4.4, w: 2.4, d: 1.5, h: 2.95, top: "bleachers", brick: BRICK_RED },
+    { x: 7.1, w: 1.9, d: 1.5, h: 2.75, top: "billboard", brick: BRICK_BROWN },
+  ];
+
+  for (const b of buildings) {
+    // Main 3-story building
+    const body = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(b.w, b.h, b.d), b.brick)
+    );
+    body.position.set(b.x, b.h / 2, 0);
+    g.add(body);
+
+    // Stone trim/cornice at top
+    const cornice = nonShadow(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(b.w + 0.06, 0.1, b.d + 0.06),
+        STONE_TRIM
+      )
+    );
+    cornice.position.set(b.x, b.h - 0.05, 0);
+    g.add(cornice);
+
+    // Window grid (3 floors x 2 columns)
+    for (let floor = 0; floor < 3; floor++) {
+      for (let col = 0; col < 2; col++) {
+        const win = nonShadow(
+          new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.5, 0.04), WINDOW)
+        );
+        win.position.set(
+          b.x + (col - 0.5) * b.w * 0.55,
+          0.5 + floor * (b.h / 3.3),
+          b.d / 2 + 0.02
+        );
+        g.add(win);
+      }
+    }
+
+    // Flat tar roof
+    const roof = nonShadow(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(b.w + 0.02, 0.08, b.d + 0.02),
+        ROOF_DARK
+      )
+    );
+    roof.position.set(b.x, b.h + 0.04, 0);
+    g.add(roof);
+
+    // Rooftop feature
+    if (b.top === "bleachers") {
+      // Stepped wooden rooftop bleachers facing the field (south, +z)
+      for (let row = 0; row < 4; row++) {
+        const step = nonShadow(
+          new THREE.Mesh(new THREE.BoxGeometry(b.w * 0.85, 0.16, 0.3), WOOD)
+        );
+        step.position.set(
+          b.x,
+          b.h + 0.18 + row * 0.18,
+          b.d / 2 - 0.25 - row * 0.28
+        );
+        g.add(step);
+        // Three seats per row
+        for (const s of [-1, 0, 1]) {
+          const seat = nonShadow(
+            new THREE.Mesh(
+              new THREE.BoxGeometry(0.22, 0.14, 0.18),
+              SEAT_BLUE
+            )
+          );
+          seat.position.set(
+            b.x + s * b.w * 0.27,
+            b.h + 0.33 + row * 0.18,
+            b.d / 2 - 0.25 - row * 0.28
+          );
+          g.add(seat);
+        }
+      }
+      // Railing along the front edge
+      const rail = nonShadow(
+        new THREE.Mesh(
+          new THREE.BoxGeometry(b.w * 0.92, 0.04, 0.04),
+          WOOD_DARK
+        )
+      );
+      rail.position.set(b.x, b.h + 0.55, b.d / 2 - 0.02);
+      g.add(rail);
+    } else if (b.top === "water") {
+      // Wooden water tank with conical roof on a steel frame
+      const frameH = 0.5;
+      // Frame legs
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+        const leg = nonShadow(
+          new THREE.Mesh(
+            new THREE.BoxGeometry(0.04, frameH, 0.04),
+            WOOD_DARK
+          )
+        );
+        leg.position.set(
+          b.x + Math.cos(a) * 0.32,
+          b.h + 0.08 + frameH / 2,
+          Math.sin(a) * 0.32
+        );
+        g.add(leg);
+      }
+      // Wooden tank body (cylindrical)
+      const tank = nonShadow(
+        new THREE.Mesh(
+          new THREE.CylinderGeometry(0.38, 0.4, 0.75, 14),
+          WOOD
+        )
+      );
+      tank.position.set(b.x, b.h + 0.08 + frameH + 0.375, 0);
+      g.add(tank);
+      // Iron band rings around the tank
+      for (let r = 0; r < 3; r++) {
+        const band = nonShadow(
+          new THREE.Mesh(
+            new THREE.TorusGeometry(0.4, 0.012, 4, 16),
+            mat(0x3a3540, { metalness: 0.5 })
+          )
+        );
+        band.position.set(b.x, b.h + 0.08 + frameH + 0.1 + r * 0.27, 0);
+        band.rotation.x = Math.PI / 2;
+        g.add(band);
+      }
+      // Conical roof
+      const tankRoof = nonShadow(
+        new THREE.Mesh(
+          new THREE.ConeGeometry(0.46, 0.28, 14),
+          mat(0x4a3025, { roughness: 0.88 })
+        )
+      );
+      tankRoof.position.set(b.x, b.h + 0.08 + frameH + 0.88, 0);
+      g.add(tankRoof);
+    } else if (b.top === "billboard") {
+      // Painted-side billboard (gives the row some variety)
+      const board = nonShadow(
+        new THREE.Mesh(
+          new THREE.BoxGeometry(b.w * 0.85, 0.95, 0.08),
+          mat(0xfffaee, { emissive: 0xfff0c0, emissiveIntensity: 0.5 })
+        )
+      );
+      board.position.set(b.x, b.h + 0.55, -b.d / 2 + 0.02);
+      g.add(board);
+      const frame1 = nonShadow(
+        new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.1, 0.06), WOOD_DARK)
+      );
+      frame1.position.set(b.x - b.w * 0.42, b.h + 0.6, -b.d / 2 + 0.02);
+      g.add(frame1);
+      const frame2 = nonShadow(
+        new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.1, 0.06), WOOD_DARK)
+      );
+      frame2.position.set(b.x + b.w * 0.42, b.h + 0.6, -b.d / 2 + 0.02);
+      g.add(frame2);
+    }
+  }
+
+  return g;
+}
+
+// ---- CTA "L" elevated track loop with a 3-car Red Line train.
+//      The train animates around the loop; the function attaches an
+//      update(dt) callback to userData. ----
+export function createCTATrack() {
+  const g = new THREE.Group();
+
+  const STEEL = mat(0x3a3540, { roughness: 0.45, metalness: 0.6 });
+  const STEEL_DARK = mat(0x1a1820, { roughness: 0.5, metalness: 0.5 });
+  const RAIL = mat(0xa0a4ad, { roughness: 0.35, metalness: 0.8 });
+  const TIE = mat(0x4a3a2a, { roughness: 0.88 });
+  const RL_RED = mat(0xb3242b, { roughness: 0.45, metalness: 0.3 });
+  const RL_DARK = mat(0x6a151a, { roughness: 0.55 });
+  const WIN_LIT = mat(0xc0d0e0, {
+    emissive: 0x4a6080,
+    emissiveIntensity: 0.55,
+    metalness: 0.6,
+  });
+  const SILVER = mat(0x808890, { roughness: 0.5, metalness: 0.5 });
+  const HEAD = mat(0xfff8d0, {
+    emissive: 0xfff0b0,
+    emissiveIntensity: 0.85,
+  });
+
+  const trackR = 14.5; // radius of the loop, sits just outside the plaza
+  const trackY = 1.65; // elevation
+  const trackGauge = 0.42;
+
+  // ---- Track deck: a thin torus ----
+  const deck = nonShadow(
+    new THREE.Mesh(
+      new THREE.TorusGeometry(trackR, 0.06, 6, 96),
+      STEEL_DARK
+    )
+  );
+  deck.rotation.x = Math.PI / 2;
+  deck.position.y = trackY;
+  g.add(deck);
+
+  // ---- Two parallel rails ----
+  for (const offset of [-trackGauge / 2, trackGauge / 2]) {
+    const rail = nonShadow(
+      new THREE.Mesh(
+        new THREE.TorusGeometry(trackR + offset, 0.025, 5, 96),
+        RAIL
+      )
+    );
+    rail.rotation.x = Math.PI / 2;
+    rail.position.y = trackY + 0.1;
+    g.add(rail);
+  }
+
+  // ---- Wooden ties between the rails ----
+  const tieCount = 64;
+  for (let i = 0; i < tieCount; i++) {
+    const a = (i / tieCount) * Math.PI * 2;
+    const tie = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(trackGauge + 0.18, 0.04, 0.12), TIE)
+    );
+    tie.position.set(Math.cos(a) * trackR, trackY + 0.08, Math.sin(a) * trackR);
+    tie.rotation.y = -a + Math.PI / 2;
+    g.add(tie);
+  }
+
+  // ---- Steel support pillars + cross bracing every 30° ----
+  const pillars = 14;
+  for (let i = 0; i < pillars; i++) {
+    const a = (i / pillars) * Math.PI * 2;
+    const x = Math.cos(a) * trackR;
+    const z = Math.sin(a) * trackR;
+    // Vertical girder
+    const pillar = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(0.2, trackY, 0.2), STEEL)
+    );
+    pillar.position.set(x, trackY / 2, z);
+    pillar.rotation.y = -a;
+    g.add(pillar);
+    // Base plate
+    const plate = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.08, 0.36), STEEL_DARK)
+    );
+    plate.position.set(x, 0.04, z);
+    g.add(plate);
+    // Diagonal bracing visible from outside
+    for (const dir of [-1, 1]) {
+      const brace = nonShadow(
+        new THREE.Mesh(new THREE.BoxGeometry(0.06, trackY * 0.95, 0.06), STEEL)
+      );
+      brace.position.set(x, trackY / 2, z);
+      brace.rotation.y = -a;
+      brace.rotation.z = dir * 0.45;
+      g.add(brace);
+    }
+  }
+
+  // ---- 3-car Red Line train ----
+  const train = new THREE.Group();
+  const carL = 1.8;
+  const carW = 0.5;
+  const carH = 0.55;
+  for (let i = 0; i < 3; i++) {
+    const car = new THREE.Group();
+
+    // Body
+    const body = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(carL, carH, carW), RL_RED)
+    );
+    body.position.y = carH / 2 + 0.05;
+    car.add(body);
+
+    // Dark red top stripe
+    const stripe = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(carL, 0.08, carW + 0.02), RL_DARK)
+    );
+    stripe.position.y = carH + 0.05;
+    car.add(stripe);
+
+    // Silver window band running the length
+    const wins = nonShadow(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(carL * 0.88, 0.18, carW + 0.02),
+        WIN_LIT
+      )
+    );
+    wins.position.y = carH * 0.7 + 0.05;
+    car.add(wins);
+
+    // Silver lower band
+    const lower = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(carL, 0.1, carW), SILVER)
+    );
+    lower.position.y = 0.1;
+    car.add(lower);
+
+    // Trucks/wheels suggestion
+    for (const wx of [-carL * 0.35, carL * 0.35]) {
+      const truck = nonShadow(
+        new THREE.Mesh(
+          new THREE.BoxGeometry(0.32, 0.08, carW + 0.1),
+          STEEL_DARK
+        )
+      );
+      truck.position.set(wx, 0.05, 0);
+      car.add(truck);
+    }
+
+    // Headlight only on the front car
+    if (i === 0) {
+      const head = nonShadow(
+        new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), HEAD)
+      );
+      head.position.set(carL / 2 + 0.01, carH * 0.55 + 0.05, 0);
+      car.add(head);
+    }
+
+    // Coupler to the next car
+    if (i < 2) {
+      const coupler = nonShadow(
+        new THREE.Mesh(
+          new THREE.CylinderGeometry(0.03, 0.03, 0.18, 6),
+          STEEL_DARK
+        )
+      );
+      coupler.rotation.z = Math.PI / 2;
+      coupler.position.set(carL / 2 + 0.09, 0.2, 0);
+      car.add(coupler);
+    }
+
+    train.add(car);
+  }
+  g.add(train);
+
+  // ---- Train update: parametric angle around the loop ----
+  let t = Math.random() * Math.PI * 2;
+  const angularSpeed = 0.14; // radians/sec; ~45s per loop
+  const carSpacing = (carL + 0.18) / trackR; // angular spacing between car centers
+  g.userData.update = (dt) => {
+    t += dt * angularSpeed;
+    train.children.forEach((car, i) => {
+      const a = t - i * carSpacing;
+      car.position.x = Math.cos(a) * trackR;
+      car.position.z = Math.sin(a) * trackR;
+      car.position.y = trackY + 0.12;
+      car.rotation.y = -a + Math.PI / 2;
+    });
+  };
 
   return g;
 }
@@ -924,19 +1632,35 @@ export function createLandmarks() {
     g.add(landmark);
   }
 
-  // ---- FOREGROUND (z = -16 to -20) — Museum Campus row + Wrigley ----
-  place(createWrigleyField(), -23, -18, 0.5);
-  place(createFieldMuseum(), -9, -20, -0.05);
-  place(createSoldierField(), 4, -19, 0.05);
+  // ──────────────────────────────────────────────
+  // NORTH SIDE (z<0) — visible from white's default view
+  // Three depth bands, with Wrigley Field anchoring its own neighborhood:
+  // Wrigley sits in the foreground with the Wrigleyville rooftop row
+  // immediately behind it (replacing the downtown skyline in that strip).
+  // ──────────────────────────────────────────────
+
+  // Wrigley + its neighborhood
+  place(createWrigleyField(), -22, -18, 0.5);
+  place(createWrigleyvilleRooftops(), -22, -24, 0.55);
+
+  // Other foreground landmarks
+  place(createSoldierField(), -3, -19, -0.05);
   place(createAdlerPlanetarium(), 18, -17, -0.6);
 
-  // ---- MIDGROUND (z = -27 to -30) ----
-  place(createMarinaCity(), -14, -29, 0.4);
-  place(createWaterTower(), 2, -28, 0);
+  // Midground civic icon
+  place(createWaterTower(), 6, -28, 0);
 
-  // ---- BACKGROUND (z = -40 to -46) — tall skyscrapers ----
-  place(createHancockLandmark(), -14, -42, 0.4);
-  place(createWillisLandmark(), 6, -45, -0.05);
+  // Background skyscrapers
+  place(createHancockLandmark(), -12, -42, 0.4);
+  place(createWillisLandmark(), 8, -45, -0.05);
+
+  // ──────────────────────────────────────────────
+  // SOUTH SIDE (z>0) — visible behind white's camera; whoever flips
+  // view also sees these. Lighter density so the south side doesn't
+  // crowd the field of play.
+  // ──────────────────────────────────────────────
+  place(createFieldMuseum(), 6, 22, -2.95);
+  place(createMarinaCity(), -10, 26, 2.6);
 
   return g;
 }

@@ -11,6 +11,7 @@ import {
   createPlaza,
   createGround,
   createLandmarks,
+  createCTATrack,
   setupLights,
 } from "./skyline.js";
 import { findBestMove } from "./ai.js";
@@ -78,6 +79,10 @@ scene.add(createLake());
 scene.add(createPlaza());
 scene.add(createLandmarks());
 scene.add(createSkyline());
+
+// CTA "L" elevated loop with animated 3-car Red Line train.
+const cta = createCTATrack();
+scene.add(cta);
 
 // Environment map for proper PBR reflections (the Bean, metallic spires)
 const pmrem = new THREE.PMREMGenerator(renderer);
@@ -966,6 +971,9 @@ function tick() {
   const pulse = (Math.sin(beaconClock * 3) + 1) * 0.5;
   for (const b of beaconLights) {
     b.scale.setScalar(0.8 + pulse * 0.5);
+  }
+  if (cta && cta.userData && typeof cta.userData.update === "function") {
+    cta.userData.update(dt);
   }
   controls.update();
   renderer.render(scene, camera);
