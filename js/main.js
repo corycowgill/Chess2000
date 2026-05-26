@@ -4,7 +4,15 @@ import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
 import { Game, FILES } from "./chess.js";
 import { createPiece } from "./pieces.js";
-import { createSky, createSkyline, createLake, setupLights } from "./skyline.js";
+import {
+  createSky,
+  createSkyline,
+  createLake,
+  createPlaza,
+  createGround,
+  createLandmarks,
+  setupLights,
+} from "./skyline.js";
 import { findBestMove } from "./ai.js";
 
 // ---------------- World constants ----------------
@@ -51,7 +59,9 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x182a40, 12, 40);
+// Deeper, softer fog so landmarks feel pushed back atmospherically and the
+// play area stays clean and well-lit.
+scene.fog = new THREE.Fog(0x2c3a55, 18, 75);
 
 const camera = new THREE.PerspectiveCamera(
   45,
@@ -63,8 +73,11 @@ camera.position.set(0, 7.5, 9.5);
 
 setupLights(scene);
 scene.add(createSky());
-scene.add(createSkyline());
+scene.add(createGround());
 scene.add(createLake());
+scene.add(createPlaza());
+scene.add(createLandmarks());
+scene.add(createSkyline());
 
 // Environment map for proper PBR reflections (the Bean, metallic spires)
 const pmrem = new THREE.PMREMGenerator(renderer);

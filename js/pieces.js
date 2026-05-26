@@ -543,46 +543,92 @@ function buildKnight(color) {
   return group;
 }
 
-// BISHOP — Cloud Gate (The Bean) on a pedestal
+// BISHOP — Cloud Gate ("The Bean"): mirrored bean with the signature
+// concave underside ("the gate" / "omphalos"). Built as a LatheGeometry
+// whose profile traces both the convex outer surface AND the concave
+// inner cavity so it's one continuous mirror — when viewed from below
+// you can see up into the chamber.
 function buildBishop(color) {
   const mats = materials(color);
   const group = new THREE.Group();
-  const ped = pedestal(mats, 0.34, 0.12);
+  const ped = pedestal(mats, 0.4, 0.1);
   group.add(ped.group);
 
-  // second tier pedestal
+  // Inner pedestal plate (granite slab Cloud Gate stands on)
   const ped2 = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.26, 0.3, 0.08, 24),
-    mats.stone
+    new THREE.CylinderGeometry(0.32, 0.36, 0.04, 32),
+    mats.dark
   );
-  ped2.position.y = ped.top + 0.04;
+  ped2.position.y = ped.top + 0.02;
   ped2.castShadow = true;
   group.add(ped2);
 
-  // the Bean: ellipsoid w/ underside arch
-  const beanMat = new THREE.MeshStandardMaterial({
-    color: color === "w" ? 0xf3f6fb : 0x6e7c8c,
-    roughness: 0.08,
-    metalness: 1.0,
-    envMapIntensity: 1.2,
-  });
+  // ---- Bean profile (r, y): top -> outer surface -> bottom rim ->
+  //      up the concave underside -> omphalos at the top of the cavity. ----
+  // Proportions roughly match Cloud Gate's real height:diameter (~0.85).
+  // Cavity opens downward, rim sits on the inner pedestal.
+  const profile = [
+    [0.000, 0.70], // top center
+    [0.082, 0.694],
+    [0.155, 0.678],
+    [0.220, 0.652],
+    [0.281, 0.614],
+    [0.333, 0.564],
+    [0.371, 0.498],
+    [0.395, 0.422],
+    [0.404, 0.345], // equator (widest)
+    [0.398, 0.270],
+    [0.379, 0.205],
+    [0.350, 0.150],
+    [0.315, 0.110],
+    [0.278, 0.086],
+    [0.244, 0.075], // outer bottom edge
+    // ---- transition: this is the rim of "the gate" ----
+    [0.234, 0.085],
+    // ---- inside of the concave underside, rising into the bean ----
+    [0.215, 0.128],
+    [0.190, 0.178],
+    [0.158, 0.226],
+    [0.123, 0.272],
+    [0.083, 0.310],
+    [0.042, 0.342],
+    [0.018, 0.362],
+    [0.000, 0.370], // omphalos (deepest inward point — top of the cavity)
+  ].map(([r, y]) => new THREE.Vector2(r, y));
 
-  const bean = new THREE.Mesh(new THREE.SphereGeometry(0.32, 32, 24), beanMat);
-  bean.scale.set(1.2, 0.72, 0.95);
-  bean.position.y = ped.top + 0.32;
+  const beanGeo = new THREE.LatheGeometry(profile, 64);
+  beanGeo.computeVertexNormals();
+
+  // Mirror-polished stainless steel. DoubleSide so the cavity interior
+  // is also a reflective surface — that's what creates the omphalos look.
+  const beanMat = new THREE.MeshStandardMaterial({
+    color: color === "w" ? 0xf6f8fb : 0x7a8898,
+    metalness: 1.0,
+    roughness: 0.06,
+    envMapIntensity: 1.5,
+    side: THREE.DoubleSide,
+  });
+  const bean = new THREE.Mesh(beanGeo, beanMat);
+  bean.position.y = ped.top + 0.04; // lift so the rim sits on the inner plate
   bean.castShadow = true;
   group.add(bean);
 
-  // tiny underside arch hint (a small dark dimple)
-  const dimple = new THREE.Mesh(
-    new THREE.SphereGeometry(0.12, 16, 12),
-    mats.dark
+  // Subtle dark "shadow disk" inside the cavity opening — gives the
+  // underside a sense of depth even when shadows are off, and reinforces
+  // the dark chamber feel under the bean.
+  const shadowDisk = new THREE.Mesh(
+    new THREE.CircleGeometry(0.22, 32),
+    new THREE.MeshBasicMaterial({
+      color: 0x05080d,
+      transparent: true,
+      opacity: 0.55,
+    })
   );
-  dimple.scale.set(1.0, 0.4, 0.7);
-  dimple.position.y = ped.top + 0.16;
-  group.add(dimple);
+  shadowDisk.rotation.x = -Math.PI / 2;
+  shadowDisk.position.y = ped.top + 0.06;
+  group.add(shadowDisk);
 
-  group.userData.height = ped.top + 0.62;
+  group.userData.height = ped.top + 0.04 + 0.70;
   return group;
 }
 
