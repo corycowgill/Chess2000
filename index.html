@@ -8,6 +8,20 @@
     />
     <meta name="theme-color" content="#0a1a2f" />
     <title>Chicago Chess</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-50 -50 100 100'%3E%3Cpolygon fill='%23b3242b' points='0,-50 10,-17.32 43.3,-25 20,0 43.3,25 10,17.32 0,50 -10,17.32 -43.3,25 -20,0 -43.3,-25 -10,-17.32'/%3E%3C/svg%3E"
+    />
+    <link
+      rel="preconnect"
+      href="https://fonts.googleapis.com"
+      crossorigin
+    />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;800;900&family=Big+Shoulders+Text:wght@500;600;700&family=Oswald:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="./styles.css" />
     <script type="importmap">
       {
@@ -19,16 +33,36 @@
     </script>
   </head>
   <body>
+    <!-- Shared Chicago 6-point star symbol -->
+    <svg
+      width="0"
+      height="0"
+      aria-hidden="true"
+      style="position: absolute; pointer-events: none"
+    >
+      <defs>
+        <symbol id="chi-star" viewBox="-50 -50 100 100">
+          <polygon points="0,-50 10,-17.32 43.3,-25 20,0 43.3,25 10,17.32 0,50 -10,17.32 -43.3,25 -20,0 -43.3,-25 -10,-17.32" />
+        </symbol>
+      </defs>
+    </svg>
+
     <div id="app">
       <canvas id="scene"></canvas>
 
       <header id="hud-top">
-        <div class="brand">
-          <span class="star">&#9733;</span>
-          <span class="title">Chicago Chess</span>
-          <span class="star">&#9733;</span>
+        <div class="flag-banner" role="banner">
+          <div class="stripe stripe-top"></div>
+          <div class="banner-row">
+            <svg class="cstar"><use href="#chi-star" /></svg>
+            <svg class="cstar"><use href="#chi-star" /></svg>
+            <h1 class="title">Chicago Chess</h1>
+            <svg class="cstar"><use href="#chi-star" /></svg>
+            <svg class="cstar"><use href="#chi-star" /></svg>
+          </div>
+          <div class="stripe stripe-bottom"></div>
         </div>
-        <div id="status">White to move</div>
+        <div id="status" aria-live="polite">White to move</div>
       </header>
 
       <aside id="captured-w" class="captured" aria-label="Captured white pieces"></aside>
@@ -38,42 +72,67 @@
         <button id="btn-new" class="hud-btn">New Game</button>
         <button id="btn-mode" class="hud-btn">Mode: vs CPU</button>
         <button id="btn-swap" class="hud-btn" hidden>Pass Device</button>
-        <button id="btn-undo" class="hud-btn">Undo</button>
+        <button id="btn-undo" class="hud-btn">Take Back</button>
         <button id="btn-rotate" class="hud-btn">Flip View</button>
       </footer>
 
       <div id="promo" class="overlay" hidden>
         <div class="panel">
+          <div class="panel-corners">
+            <svg class="cstar tiny"><use href="#chi-star" /></svg>
+            <svg class="cstar tiny"><use href="#chi-star" /></svg>
+            <svg class="cstar tiny"><use href="#chi-star" /></svg>
+            <svg class="cstar tiny"><use href="#chi-star" /></svg>
+          </div>
           <h2>Promote pawn</h2>
+          <p class="kicker">Pick your skyline</p>
           <div class="promo-row">
-            <button data-promo="Q">Queen</button>
-            <button data-promo="R">Rook</button>
-            <button data-promo="B">Bishop</button>
-            <button data-promo="N">Knight</button>
+            <button data-promo="Q">Hancock<br /><small>Queen</small></button>
+            <button data-promo="R">Wrigley<br /><small>Rook</small></button>
+            <button data-promo="B">The Bean<br /><small>Bishop</small></button>
+            <button data-promo="N">The Bull<br /><small>Knight</small></button>
           </div>
         </div>
       </div>
 
       <div id="endgame" class="overlay" hidden>
         <div class="panel">
-          <h2 id="endgame-title">Game over</h2>
-          <p id="endgame-sub"></p>
-          <button id="endgame-again" class="hud-btn primary">Play again</button>
+          <div class="panel-corners">
+            <svg class="cstar tiny"><use href="#chi-star" /></svg>
+            <svg class="cstar tiny"><use href="#chi-star" /></svg>
+            <svg class="cstar tiny"><use href="#chi-star" /></svg>
+            <svg class="cstar tiny"><use href="#chi-star" /></svg>
+          </div>
+          <h2 id="endgame-title">Game Over</h2>
+          <p id="endgame-sub" class="kicker"></p>
+          <button id="endgame-again" class="hud-btn primary">Rack 'Em Up</button>
         </div>
       </div>
 
       <div id="pass" class="overlay" hidden>
         <div class="panel">
-          <h2>Pass the device</h2>
-          <p id="pass-sub">Hand to the other player.</p>
+          <div class="panel-corners">
+            <svg class="cstar tiny"><use href="#chi-star" /></svg>
+            <svg class="cstar tiny"><use href="#chi-star" /></svg>
+            <svg class="cstar tiny"><use href="#chi-star" /></svg>
+            <svg class="cstar tiny"><use href="#chi-star" /></svg>
+          </div>
+          <h2>Pass the Device</h2>
+          <p id="pass-sub" class="kicker">Hand to the other player.</p>
           <button id="pass-ok" class="hud-btn primary">Ready</button>
         </div>
       </div>
 
       <div id="loading" class="overlay">
         <div class="panel">
+          <div class="panel-corners">
+            <svg class="cstar tiny"><use href="#chi-star" /></svg>
+            <svg class="cstar tiny"><use href="#chi-star" /></svg>
+            <svg class="cstar tiny"><use href="#chi-star" /></svg>
+            <svg class="cstar tiny"><use href="#chi-star" /></svg>
+          </div>
           <h2>Chicago Chess</h2>
-          <p>Loading the skyline&hellip;</p>
+          <p class="kicker">Raising the skyline&hellip;</p>
         </div>
       </div>
     </div>
