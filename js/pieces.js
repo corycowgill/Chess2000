@@ -252,105 +252,219 @@ function buildRook(color) {
   return group;
 }
 
-// KNIGHT — Chicago Bull head silhouette
+// KNIGHT — Chicago Theatre marquee (vertical "CHICAGO" sign + arched marquee)
+let _chicagoSignTexCache = null;
+function chicagoSignTexture() {
+  if (_chicagoSignTexCache) return _chicagoSignTexCache;
+  const c = document.createElement("canvas");
+  c.width = 96;
+  c.height = 384;
+  const ctx = c.getContext("2d");
+  // red field
+  ctx.fillStyle = "#c8333a";
+  ctx.fillRect(0, 0, c.width, c.height);
+  // cream edge banding top and bottom
+  ctx.fillStyle = "#fffaee";
+  ctx.fillRect(0, 0, c.width, 10);
+  ctx.fillRect(0, c.height - 10, c.width, 10);
+  // CHICAGO letters stacked vertically
+  ctx.fillStyle = "#fffaee";
+  ctx.font = 'bold 44px Impact, "Big Shoulders Display", "Arial Black", sans-serif';
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const letters = ["C", "H", "I", "C", "A", "G", "O"];
+  const total = letters.length;
+  const startY = 38;
+  const spacing = (c.height - startY * 2) / (total - 1);
+  letters.forEach((L, i) => {
+    ctx.fillText(L, c.width / 2, startY + i * spacing);
+  });
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  tex.needsUpdate = true;
+  _chicagoSignTexCache = tex;
+  return tex;
+}
+
 function buildKnight(color) {
   const mats = materials(color);
   const group = new THREE.Group();
-  const ped = pedestal(mats, 0.32, 0.1);
+  const ped = pedestal(mats, 0.36, 0.1);
   group.add(ped.group);
 
-  // bull head: stylized from box + sphere snout + horns
-  const headG = new THREE.Group();
-
-  const skull = new THREE.Mesh(
-    new THREE.SphereGeometry(0.26, 24, 18),
+  // ---- Building facade (limestone slab behind the sign) ----
+  const facadeH = 0.7;
+  const facadeW = 0.6;
+  const facadeD = 0.14;
+  const facade = new THREE.Mesh(
+    new THREE.BoxGeometry(facadeW, facadeH, facadeD),
     mats.stone
   );
-  skull.scale.set(1.0, 0.95, 1.15);
-  skull.position.y = 0.26;
-  skull.castShadow = true;
-  headG.add(skull);
+  facade.position.set(0, ped.top + facadeH / 2, -0.08);
+  facade.castShadow = true;
+  group.add(facade);
 
-  // snout
-  const snout = new THREE.Mesh(
-    new THREE.SphereGeometry(0.18, 20, 16),
+  // cornice above the facade
+  const cornice = new THREE.Mesh(
+    new THREE.BoxGeometry(facadeW + 0.06, 0.05, facadeD + 0.04),
     mats.stone
   );
-  snout.scale.set(1.0, 0.7, 0.9);
-  snout.position.set(0, 0.16, 0.22);
-  snout.castShadow = true;
-  headG.add(snout);
+  cornice.position.set(0, ped.top + facadeH + 0.025, -0.08);
+  group.add(cornice);
 
-  // nostrils
-  for (const x of [-0.05, 0.05]) {
-    const n = new THREE.Mesh(
-      new THREE.SphereGeometry(0.022, 10, 8),
-      mats.dark
+  // ---- Tiffany-style arched stained-glass window above the marquee ----
+  const winShape = new THREE.Shape();
+  const wW = 0.14;
+  const wH = 0.14;
+  winShape.moveTo(-wW, 0);
+  winShape.lineTo(-wW, wH);
+  winShape.absarc(0, wH, wW, Math.PI, 0, true);
+  winShape.lineTo(wW, 0);
+  winShape.lineTo(-wW, 0);
+  const winGeo = new THREE.ShapeGeometry(winShape);
+  const winMat = new THREE.MeshStandardMaterial({
+    color: 0xffc05a,
+    emissive: 0xffa030,
+    emissiveIntensity: 0.6,
+    roughness: 0.4,
+    metalness: 0.2,
+  });
+  const win = new THREE.Mesh(winGeo, winMat);
+  win.position.set(0, ped.top + 0.46, -0.005);
+  group.add(win);
+
+  // window mullion (vertical bar)
+  const mullion = new THREE.Mesh(
+    new THREE.BoxGeometry(0.012, wH + wW, 0.01),
+    mats.dark
+  );
+  mullion.position.set(0, ped.top + 0.46 + (wH + wW) / 2, 0.0);
+  group.add(mullion);
+
+  // ---- Arched marquee canopy ----
+  const mR = 0.3;
+  const mBase = 0.08; // straight band below the arch
+  const marqueeShape = new THREE.Shape();
+  marqueeShape.moveTo(-mR, -mBase);
+  marqueeShape.lineTo(-mR, 0);
+  marqueeShape.absarc(0, 0, mR, Math.PI, 0, true);
+  marqueeShape.lineTo(mR, -mBase);
+  marqueeShape.lineTo(-mR, -mBase);
+  const marqueeGeo = new THREE.ExtrudeGeometry(marqueeShape, {
+    depth: 0.2,
+    bevelEnabled: true,
+    bevelThickness: 0.01,
+    bevelSize: 0.01,
+    bevelSegments: 1,
+  });
+  const marqueeMat = new THREE.MeshStandardMaterial({
+    color: 0xc8333a,
+    roughness: 0.45,
+    metalness: 0.25,
+    emissive: 0x4d1014,
+    emissiveIntensity: 0.25,
+  });
+  const marquee = new THREE.Mesh(marqueeGeo, marqueeMat);
+  marquee.position.set(0, ped.top + 0.18, 0.03);
+  marquee.castShadow = true;
+  group.add(marquee);
+
+  // Cream band on the underside of the marquee (where "CHICAGO" text would go)
+  const band = new THREE.Mesh(
+    new THREE.BoxGeometry(2 * mR, 0.04, 0.18),
+    new THREE.MeshStandardMaterial({
+      color: 0xfffaee,
+      emissive: 0xfff0c8,
+      emissiveIntensity: 0.5,
+      roughness: 0.35,
+    })
+  );
+  band.position.set(0, ped.top + 0.12, 0.12);
+  group.add(band);
+
+  // ---- Bulbs around the marquee arch ----
+  const bulbMat = new THREE.MeshStandardMaterial({
+    color: 0xfff5b0,
+    emissive: 0xffe080,
+    emissiveIntensity: 1.0,
+    roughness: 0.3,
+    metalness: 0.1,
+  });
+  for (let i = 0; i <= 12; i++) {
+    const a = (i / 12) * Math.PI;
+    const x = Math.cos(a) * (mR + 0.018);
+    const y = Math.sin(a) * (mR + 0.018);
+    const bulb = new THREE.Mesh(
+      new THREE.SphereGeometry(0.018, 8, 6),
+      bulbMat
     );
-    n.position.set(x, 0.16, 0.37);
-    headG.add(n);
+    bulb.position.set(x, ped.top + 0.18 + y, 0.03 + 0.21);
+    group.add(bulb);
+  }
+  // bottom row of bulbs along the cream band
+  for (let i = -2; i <= 2; i++) {
+    const bulb = new THREE.Mesh(
+      new THREE.SphereGeometry(0.016, 8, 6),
+      bulbMat
+    );
+    bulb.position.set(i * (mR * 0.4), ped.top + 0.1, 0.22);
+    group.add(bulb);
   }
 
-  // eyes
-  for (const x of [-0.1, 0.1]) {
-    const eyeWhite = new THREE.Mesh(
-      new THREE.SphereGeometry(0.035, 12, 10),
-      new THREE.MeshStandardMaterial({
-        color: 0xfff5d8,
-        roughness: 0.3,
-        metalness: 0.1,
-      })
-    );
-    eyeWhite.position.set(x, 0.32, 0.18);
-    headG.add(eyeWhite);
-    const pupil = new THREE.Mesh(
-      new THREE.SphereGeometry(0.015, 10, 8),
-      mats.dark
-    );
-    pupil.position.set(x, 0.32, 0.215);
-    headG.add(pupil);
+  // ---- Vertical "CHICAGO" sign pylon ----
+  const signH = 0.95;
+  const signW = 0.16;
+  const signD = 0.08;
+  const signTex = chicagoSignTexture();
+  const sideMat = new THREE.MeshStandardMaterial({
+    color: 0xc8333a,
+    roughness: 0.4,
+    metalness: 0.25,
+    emissive: 0x4d1014,
+    emissiveIntensity: 0.3,
+  });
+  const faceMat = new THREE.MeshStandardMaterial({
+    map: signTex,
+    emissiveMap: signTex,
+    emissive: 0x331010,
+    emissiveIntensity: 0.55,
+    roughness: 0.35,
+    metalness: 0.2,
+  });
+  // Box face order: +X, -X, +Y, -Y, +Z, -Z
+  const sign = new THREE.Mesh(
+    new THREE.BoxGeometry(signW, signH, signD),
+    [sideMat, sideMat, sideMat, sideMat, faceMat, faceMat]
+  );
+  sign.position.set(0, ped.top + facadeH + signH / 2 - 0.02, 0.02);
+  sign.castShadow = true;
+  group.add(sign);
+
+  // light-bulb strips along each vertical edge of the sign (front face)
+  for (let i = 0; i < 10; i++) {
+    const bulbY =
+      ped.top + facadeH + signH * 0.06 + i * (signH * 0.88) / 9 - 0.02;
+    for (const side of [-1, 1]) {
+      const bulb = new THREE.Mesh(
+        new THREE.SphereGeometry(0.014, 6, 6),
+        bulbMat
+      );
+      bulb.position.set(side * (signW / 2 + 0.018), bulbY, 0.02 + signD / 2);
+      group.add(bulb);
+    }
   }
 
-  // horns: tapered cones curving up-and-out
-  for (const side of [-1, 1]) {
-    const hornG = new THREE.Group();
-    const horn = new THREE.Mesh(
-      new THREE.ConeGeometry(0.045, 0.36, 12),
-      mats.metal
-    );
-    horn.position.y = 0.18;
-    horn.castShadow = true;
-    hornG.add(horn);
-    hornG.position.set(side * 0.22, 0.34, -0.04);
-    hornG.rotation.z = side * 0.5;
-    hornG.rotation.x = -0.15;
-    headG.add(hornG);
-  }
-
-  // top tuft (fur)
-  const tuft = new THREE.Mesh(
-    new THREE.SphereGeometry(0.07, 12, 10),
-    mats.stone
+  // small cap on top of the sign
+  const cap = new THREE.Mesh(
+    new THREE.BoxGeometry(signW + 0.03, 0.04, signD + 0.02),
+    mats.dark
   );
-  tuft.position.set(0, 0.45, -0.05);
-  tuft.scale.set(1.2, 0.7, 0.8);
-  headG.add(tuft);
+  cap.position.set(0, ped.top + facadeH + signH - 0.02, 0.02);
+  group.add(cap);
 
-  // neck pad transitioning down
-  const neck = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.18, 0.22, 0.18, 18),
-    mats.stone
-  );
-  neck.position.y = 0.0;
-  neck.castShadow = true;
-  headG.add(neck);
-
-  headG.position.y = ped.top + 0.05;
-  // Knights face forward (we'll rotate by team in placePieces)
-  group.add(headG);
-
-  group.userData.height = ped.top + 0.85;
-  group.userData.facing = true; // requires orientation
+  group.userData.height = ped.top + facadeH + signH + 0.05;
+  group.userData.facing = true;
   return group;
 }
 
