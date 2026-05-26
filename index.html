@@ -139,37 +139,66 @@
             hidden
             style="color: #7d1a1f; max-width: 320px; word-break: break-word"
           ></p>
+          <button
+            id="loading-start"
+            class="hud-btn primary"
+            style="margin-top: 8px"
+            hidden
+          >
+            Play
+          </button>
         </div>
       </div>
     </div>
 
     <script>
-      // Surface errors during boot (module MIME errors, syntax errors, etc.)
-      // so the loading screen doesn't silently hang.
+      // Boot-time helpers: surface errors, give the user a manual Play button
+      // so they're never stuck on the title card.
       (function () {
+        const loadingEl = document.getElementById("loading");
         const errEl = document.getElementById("loading-error");
         const kickerEl = document.getElementById("loading-kicker");
-        function show(msg) {
-          if (!errEl) return;
-          errEl.hidden = false;
-          errEl.textContent = String(msg).slice(0, 400);
-          if (kickerEl) kickerEl.textContent = "Boot failed";
+        const startBtn = document.getElementById("loading-start");
+
+        function dismiss() {
+          if (loadingEl) loadingEl.hidden = true;
         }
+
+        startBtn.addEventListener("click", dismiss);
+
+        // Expose helpers so main.js can update state once the scene is ready.
+        window.__chicagoChess = {
+          ready: function () {
+            if (kickerEl) kickerEl.textContent = "Tap Play to begin";
+            startBtn.hidden = false;
+            try { startBtn.focus({ preventScroll: true }); } catch (_) {}
+          },
+          dismiss: dismiss,
+          error: function (msg) {
+            if (!errEl) return;
+            errEl.hidden = false;
+            errEl.textContent = String(msg).slice(0, 400);
+            if (kickerEl) kickerEl.textContent = "Boot failed";
+          },
+        };
+
         window.addEventListener("error", function (e) {
-          show((e.message || "Error") + (e.filename ? " — " + e.filename : ""));
+          window.__chicagoChess.error(
+            (e.message || "Error") + (e.filename ? " — " + e.filename : "")
+          );
         });
         window.addEventListener("unhandledrejection", function (e) {
-          show("Promise: " + (e.reason && e.reason.message ? e.reason.message : e.reason));
+          window.__chicagoChess.error(
+            "Promise: " + (e.reason && e.reason.message ? e.reason.message : e.reason)
+          );
         });
-        // If main.js never hides the loading screen within 8s, assume it failed.
         setTimeout(function () {
-          const l = document.getElementById("loading");
-          if (l && !l.hidden && errEl && errEl.hidden) {
-            show(
-              "Game script did not start within 8s. Most likely the server is serving JS files with the wrong MIME type."
-            );
+          if (loadingEl && !loadingEl.hidden && errEl && errEl.hidden) {
+            if (kickerEl)
+              kickerEl.textContent =
+                "Still loading — tap Play if it doesn't appear on its own.";
           }
-        }, 8000);
+        }, 6000);
       })();
     </script>
 

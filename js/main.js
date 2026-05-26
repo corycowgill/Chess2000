@@ -814,11 +814,21 @@ collectBeacons();
 updateStatus();
 setMode("cpu");
 
-// Hide loading after a frame
+// Render one frame, then mark the title screen as ready so the Play button is
+// active and visible. After 1.2s of being ready, auto-dismiss the title for
+// users who don't notice the button.
 requestAnimationFrame(() => {
+  renderer.render(scene, camera);
+  if (window.__chicagoChess && window.__chicagoChess.ready) {
+    window.__chicagoChess.ready();
+  }
   setTimeout(() => {
-    loadingEl.hidden = true;
-  }, 100);
+    if (window.__chicagoChess && window.__chicagoChess.dismiss) {
+      window.__chicagoChess.dismiss();
+    } else if (loadingEl) {
+      loadingEl.hidden = true;
+    }
+  }, 1200);
 });
 
 // ---------------- Render loop ----------------
