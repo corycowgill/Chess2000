@@ -132,10 +132,46 @@
             <svg class="cstar tiny"><use href="#chi-star" /></svg>
           </div>
           <h2>Chicago Chess</h2>
-          <p class="kicker">Raising the skyline&hellip;</p>
+          <p class="kicker" id="loading-kicker">Raising the skyline&hellip;</p>
+          <p
+            class="kicker"
+            id="loading-error"
+            hidden
+            style="color: #7d1a1f; max-width: 320px; word-break: break-word"
+          ></p>
         </div>
       </div>
     </div>
+
+    <script>
+      // Surface errors during boot (module MIME errors, syntax errors, etc.)
+      // so the loading screen doesn't silently hang.
+      (function () {
+        const errEl = document.getElementById("loading-error");
+        const kickerEl = document.getElementById("loading-kicker");
+        function show(msg) {
+          if (!errEl) return;
+          errEl.hidden = false;
+          errEl.textContent = String(msg).slice(0, 400);
+          if (kickerEl) kickerEl.textContent = "Boot failed";
+        }
+        window.addEventListener("error", function (e) {
+          show((e.message || "Error") + (e.filename ? " — " + e.filename : ""));
+        });
+        window.addEventListener("unhandledrejection", function (e) {
+          show("Promise: " + (e.reason && e.reason.message ? e.reason.message : e.reason));
+        });
+        // If main.js never hides the loading screen within 8s, assume it failed.
+        setTimeout(function () {
+          const l = document.getElementById("loading");
+          if (l && !l.hidden && errEl && errEl.hidden) {
+            show(
+              "Game script did not start within 8s. Most likely the server is serving JS files with the wrong MIME type."
+            );
+          }
+        }, 8000);
+      })();
+    </script>
 
     <script type="module" src="./js/main.js"></script>
   </body>

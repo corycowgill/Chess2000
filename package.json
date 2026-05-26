@@ -1,0 +1,13 @@
+{
+  "name": "chicago-chess",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Chicago-themed 3D chess in the browser",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

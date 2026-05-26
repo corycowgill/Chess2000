@@ -1,20 +1,12 @@
 services:
   - type: web
     name: chess2000
-    runtime: static
+    runtime: node
+    plan: free
     buildCommand: ""
-    staticPublishPath: ./
-    pullRequestPreviewsEnabled: false
-    headers:
-      - path: /*.css
-        name: Content-Type
-        value: text/css; charset=utf-8
-      - path: /*.js
-        name: Content-Type
-        value: text/javascript; charset=utf-8
-      - path: /*.html
-        name: Content-Type
-        value: text/html; charset=utf-8
-      - path: /*
-        name: Cache-Control
-        value: public, max-age=300
+    startCommand: node server.js
+    autoDeploy: true
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: 20
