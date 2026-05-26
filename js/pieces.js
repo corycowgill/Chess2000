@@ -155,100 +155,175 @@ function buildPawn(color) {
   return group;
 }
 
-// ROOK — Wrigley Building (stepped square tower with clock + crown)
+// ROOK — Marina City "corncob" tower (Bertrand Goldberg, 1964)
+// One cylindrical tower with scalloped balcony floors over an open parking podium.
+let _marinaShapeCache = null;
+function marinaScallopShape(R, r, petals = 16) {
+  // Cache only if dimensions match, otherwise rebuild.
+  if (
+    _marinaShapeCache &&
+    _marinaShapeCache.R === R &&
+    _marinaShapeCache.r === r &&
+    _marinaShapeCache.petals === petals
+  ) {
+    return _marinaShapeCache.shape;
+  }
+  const shape = new THREE.Shape();
+  const N = petals * 8;
+  for (let i = 0; i < N; i++) {
+    const t = (i / N) * Math.PI * 2;
+    const radius = R + r * (0.5 + 0.5 * Math.cos(petals * t));
+    const x = Math.cos(t) * radius;
+    const y = Math.sin(t) * radius;
+    if (i === 0) shape.moveTo(x, y);
+    else shape.lineTo(x, y);
+  }
+  shape.closePath();
+  _marinaShapeCache = { shape, R, r, petals };
+  return shape;
+}
+
 function buildRook(color) {
   const mats = materials(color);
   const group = new THREE.Group();
-  const ped = pedestal(mats, 0.36, 0.1);
+  const ped = pedestal(mats, 0.4, 0.1);
   group.add(ped.group);
 
-  // main shaft with window stripes
-  const shaftH = 0.95;
-  const shaft = new THREE.Mesh(
-    new THREE.BoxGeometry(0.5, shaftH, 0.5),
-    mats.stone
-  );
-  shaft.position.y = ped.top + shaftH / 2;
-  shaft.castShadow = true;
-  group.add(shaft);
+  const petals = 16;
+  const R = 0.3; // base radius to the troughs
+  const r = 0.06; // outward bump depth (balcony scallops)
+  const towerH = 1.55;
+  const parkH = towerH * 0.32; // 19 floors of parking
+  const aptH = towerH - parkH; // ~40 apartment floors above
 
-  // window glass strips (vertical insets)
-  for (const side of [-1, 1]) {
-    const w = new THREE.Mesh(
-      new THREE.BoxGeometry(0.06, shaftH * 0.7, 0.51),
-      mats.glass
+  // ---- Parking podium: open structure with vertical pillars + glass core ----
+  const numPillars = 16;
+  for (let i = 0; i < numPillars; i++) {
+    const a = (i / numPillars) * Math.PI * 2;
+    const x = Math.cos(a) * R;
+    const z = Math.sin(a) * R;
+    const pillar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.014, 0.014, parkH, 6),
+      mats.dark
     );
-    w.position.set(side * 0.16, ped.top + shaftH / 2, 0);
-    group.add(w);
-    const w2 = new THREE.Mesh(
-      new THREE.BoxGeometry(0.51, shaftH * 0.7, 0.06),
-      mats.glass
+    pillar.position.set(x, ped.top + parkH / 2, z);
+    pillar.castShadow = true;
+    group.add(pillar);
+  }
+  // Helical ramp suggestion: thin ring(s) inside the parking podium
+  for (let k = 1; k <= 3; k++) {
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(R * 0.85, 0.008, 4, 24),
+      mats.dark
     );
-    w2.position.set(0, ped.top + shaftH / 2, side * 0.16);
-    group.add(w2);
+    ring.position.y = ped.top + (k / 4) * parkH;
+    ring.rotation.x = Math.PI / 2;
+    group.add(ring);
+  }
+  // Glass elevator/utility core in the center
+  const core = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.11, 0.11, parkH * 1.02, 20),
+    mats.glass
+  );
+  core.position.y = ped.top + parkH / 2;
+  group.add(core);
+
+  // Roof of the parking podium (where the apartment cylinder sits)
+  const parkRoof = new THREE.Mesh(
+    new THREE.CylinderGeometry(R + r + 0.01, R + r + 0.01, 0.03, 32),
+    mats.dark
+  );
+  parkRoof.position.y = ped.top + parkH + 0.015;
+  parkRoof.castShadow = true;
+  group.add(parkRoof);
+
+  // ---- Apartment tower: scalloped extruded prism ----
+  const shape = marinaScallopShape(R, r, petals);
+  const aptGeo = new THREE.ExtrudeGeometry(shape, {
+    depth: aptH,
+    bevelEnabled: false,
+    steps: 1,
+  });
+  // Extrude defaults to +Z; rotate so it stands along +Y.
+  aptGeo.rotateX(-Math.PI / 2);
+  const apt = new THREE.Mesh(aptGeo, mats.stone);
+  apt.position.y = ped.top + parkH;
+  apt.castShadow = true;
+  group.add(apt);
+
+  // Floor lines: thin dark rings around each apartment floor
+  const aptFloors = 16;
+  for (let f = 1; f < aptFloors; f++) {
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(R + r * 0.55, 0.005, 4, petals * 2),
+      mats.dark
+    );
+    ring.position.y = ped.top + parkH + (f / aptFloors) * aptH;
+    ring.rotation.x = Math.PI / 2;
+    group.add(ring);
   }
 
-  // setback
-  const setH = 0.18;
-  const set = new THREE.Mesh(
-    new THREE.BoxGeometry(0.62, setH, 0.62),
-    mats.stone
-  );
-  set.position.y = ped.top + shaftH + setH / 2;
-  set.castShadow = true;
-  group.add(set);
-
-  // clock tower
-  const clockH = 0.4;
-  const clock = new THREE.Mesh(
-    new THREE.BoxGeometry(0.38, clockH, 0.38),
-    mats.stone
-  );
-  clock.position.y = ped.top + shaftH + setH + clockH / 2;
-  clock.castShadow = true;
-  group.add(clock);
-
-  // clock faces
-  for (let i = 0; i < 4; i++) {
-    const face = new THREE.Mesh(
-      new THREE.CircleGeometry(0.12, 24),
-      mats.glass
-    );
-    face.position.y = ped.top + shaftH + setH + clockH * 0.55;
-    const ang = (i * Math.PI) / 2;
-    face.position.x = Math.sin(ang) * 0.191;
-    face.position.z = Math.cos(ang) * 0.191;
-    face.lookAt(face.position.x * 10, face.position.y, face.position.z * 10);
-    group.add(face);
-    // hands
-    const hand = new THREE.Mesh(
-      new THREE.BoxGeometry(0.005, 0.16, 0.005),
-      mats.accent
-    );
-    hand.position.copy(face.position);
-    hand.position.add(face.position.clone().normalize().multiplyScalar(0.005));
-    hand.rotation.copy(face.rotation);
-    group.add(hand);
+  // Tiny glow inside random balconies for windows-at-dusk feel
+  const litMat = new THREE.MeshStandardMaterial({
+    color: 0xffd58a,
+    emissive: 0xffb050,
+    emissiveIntensity: 0.6,
+    roughness: 0.5,
+  });
+  const seedRand = (() => {
+    let s = color === "w" ? 31 : 71;
+    return () => {
+      s = (s * 1103515245 + 12345) & 0x7fffffff;
+      return s / 0x7fffffff;
+    };
+  })();
+  for (let f = 2; f < aptFloors; f++) {
+    for (let p = 0; p < petals; p++) {
+      if (seedRand() > 0.78) {
+        const a = (p / petals) * Math.PI * 2;
+        const win = new THREE.Mesh(
+          new THREE.SphereGeometry(0.018, 6, 4),
+          litMat
+        );
+        const radius = R + r * 0.85;
+        win.position.set(
+          Math.cos(a) * radius,
+          ped.top + parkH + (f / aptFloors) * aptH + 0.005,
+          Math.sin(a) * radius
+        );
+        win.scale.set(1.0, 0.4, 0.4);
+        group.add(win);
+      }
+    }
   }
 
-  // crown / spire
-  const crown = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.16, 0.2, 0.14, 16),
+  // ---- Roof ----
+  const topCap = new THREE.Mesh(
+    new THREE.CylinderGeometry(R + r * 0.5, R + r * 0.5, 0.04, 32),
+    mats.dark
+  );
+  topCap.position.y = ped.top + towerH + 0.02;
+  topCap.castShadow = true;
+  group.add(topCap);
+
+  const mech = new THREE.Mesh(
+    new THREE.BoxGeometry(0.16, 0.05, 0.16),
     mats.stone
   );
-  crown.position.y = ped.top + shaftH + setH + clockH + 0.07;
-  crown.castShadow = true;
-  group.add(crown);
+  mech.position.y = ped.top + towerH + 0.065;
+  mech.castShadow = true;
+  group.add(mech);
 
-  const spire = new THREE.Mesh(
-    new THREE.ConeGeometry(0.07, 0.22, 16),
+  // small antenna
+  const ant = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.006, 0.01, 0.16, 8),
     mats.metal
   );
-  spire.position.y = ped.top + shaftH + setH + clockH + 0.14 + 0.11;
-  spire.castShadow = true;
-  group.add(spire);
+  ant.position.y = ped.top + towerH + 0.09 + 0.08;
+  ant.castShadow = true;
+  group.add(ant);
 
-  group.userData.height = ped.top + shaftH + setH + clockH + 0.36;
+  group.userData.height = ped.top + towerH + 0.22;
   return group;
 }
 
