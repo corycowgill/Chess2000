@@ -843,27 +843,106 @@ function onResize() {
 window.addEventListener("resize", onResize);
 onResize();
 
+// ---------------- Gallery thumbnails ----------------
+// Snapshot one of each piece using the main renderer (cheap, one-off) and
+// pipe the result into the gallery cards on the title screen.
+function generateGalleryThumbnails() {
+  const cards = document.querySelectorAll(".gallery-card");
+  if (!cards.length) return;
+
+  const origSize = renderer.getSize(new THREE.Vector2());
+  const origPixelRatio = renderer.getPixelRatio();
+  const origAutoClear = renderer.autoClear;
+
+  const w = 260;
+  const h = 320;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(w, h, false);
+
+  // Mini-scene tuned for piece display: dusk-blue background, soft warm key,
+  // cool fill, environment carried over so the metallic Bean still shines.
+  const tempScene = new THREE.Scene();
+  tempScene.background = new THREE.Color(0x0a1a2f);
+  tempScene.environment = scene.environment;
+  tempScene.add(new THREE.AmbientLight(0xb6c8e0, 0.55));
+  const key = new THREE.DirectionalLight(0xffe2b0, 1.4);
+  key.position.set(3, 5, 4);
+  tempScene.add(key);
+  const fill = new THREE.DirectionalLight(0x6fb6dc, 0.4);
+  fill.position.set(-3, 3, -3);
+  tempScene.add(fill);
+
+  // Floor pad so the piece doesn't float; matches in-game square colors.
+  const padMat = new THREE.MeshStandardMaterial({
+    color: 0xf6f1e3,
+    roughness: 0.5,
+    metalness: 0.1,
+  });
+  const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.05, 32), padMat);
+  pad.position.y = -0.025;
+  tempScene.add(pad);
+
+  const tempCamera = new THREE.PerspectiveCamera(28, w / h, 0.1, 100);
+
+  for (const card of cards) {
+    const t = card.dataset.piece;
+    const piece = createPiece(t, "w");
+    if (t === "N") piece.rotation.y = Math.PI * 0.15; // a slight angle on the marquee
+    tempScene.add(piece);
+
+    const pH = piece.userData.height || 1.5;
+    tempCamera.position.set(2.4, pH * 0.55 + 0.3, 2.9);
+    tempCamera.lookAt(0, pH * 0.42, 0);
+
+    renderer.render(tempScene, tempCamera);
+
+    // Snapshot the renderer's drawing buffer into a 2D canvas, since the
+    // WebGL canvas itself is shared and will be reused for the game.
+    const snap = document.createElement("canvas");
+    snap.width = renderer.domElement.width;
+    snap.height = renderer.domElement.height;
+    snap.getContext("2d").drawImage(renderer.domElement, 0, 0);
+
+    const img = new Image();
+    img.alt = card.querySelector("h3")?.textContent || t;
+    img.draggable = false;
+    img.src = snap.toDataURL("image/png");
+    const thumb = card.querySelector(".thumb");
+    if (thumb) {
+      thumb.innerHTML = "";
+      thumb.appendChild(img);
+    }
+
+    tempScene.remove(piece);
+  }
+
+  // Restore main renderer state.
+  renderer.setPixelRatio(origPixelRatio);
+  renderer.setSize(origSize.x, origSize.y, false);
+  renderer.autoClear = origAutoClear;
+  pad.geometry.dispose();
+  padMat.dispose();
+}
+
 // ---------------- Init ----------------
 placePieces();
 collectBeacons();
 updateStatus();
 setMode("cpu");
 
-// Render one frame, then mark the title screen as ready so the Play button is
-// active and visible. After 1.2s of being ready, auto-dismiss the title for
-// users who don't notice the button.
+// Generate gallery thumbnails once, then render one game frame, then mark
+// the title screen ready so the Play and Gallery buttons appear. No
+// auto-dismiss — the user starts the game when they tap Play.
 requestAnimationFrame(() => {
+  try {
+    generateGalleryThumbnails();
+  } catch (err) {
+    console.warn("Gallery thumbnail generation failed:", err);
+  }
   renderer.render(scene, camera);
   if (window.__chicagoChess && window.__chicagoChess.ready) {
     window.__chicagoChess.ready();
   }
-  setTimeout(() => {
-    if (window.__chicagoChess && window.__chicagoChess.dismiss) {
-      window.__chicagoChess.dismiss();
-    } else if (loadingEl) {
-      loadingEl.hidden = true;
-    }
-  }, 1200);
 });
 
 // ---------------- Render loop ----------------

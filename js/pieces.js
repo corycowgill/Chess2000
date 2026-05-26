@@ -695,98 +695,197 @@ function buildQueen(color) {
   return group;
 }
 
-// KING — Willis Tower (bundled tube structure with antenna)
+// KING — Willis Tower (Bruce Graham/SOM, 1973): bundled tube structure with
+// stepped setbacks. 9 square tubes share a base; tubes terminate at different
+// heights to create the iconic stepped silhouette.
 function buildKing(color) {
   const mats = materials(color);
   const group = new THREE.Group();
-  const ped = pedestal(mats, 0.4, 0.1);
+  const ped = pedestal(mats, 0.46, 0.1);
   group.add(ped.group);
 
-  // Willis Tower: 9 bundled tubes of varying heights (3x3 arrangement)
-  // Heights pattern (approx, normalized): center tall, two adjacent tall, corners shorter
+  // Height as a fraction of the tallest tube. Two adjacent tubes reach the
+  // top (the pair with antennae), five terminate at the middle setback,
+  // two more terminate at the lowest setback — matching the building's
+  // four-level silhouette.
+  const SHORT = 0.34;
+  const MED = 0.66;
+  const TALL = 1.0;
   const heights = [
-    [1.5, 1.6, 1.5],
-    [1.6, 1.9, 1.6],
-    [1.5, 1.6, 1.5],
+    [SHORT, MED, MED],
+    [MED, TALL, TALL],
+    [MED, MED, SHORT],
   ];
-  const tubeW = 0.165;
-  const gap = 0.005;
+
+  const fullH = 2.35;
+  const tubeW = 0.17;
+  const gap = 0.004;
   const totalSpan = 3 * tubeW + 2 * gap;
-  const base = -totalSpan / 2 + tubeW / 2;
-  let maxH = 0;
+  const baseOffset = -totalSpan / 2 + tubeW / 2;
+
+  // Wider plinth under the bundled tubes (gives the tower visual heft).
+  const plinthH = 0.06;
+  const plinth = new THREE.Mesh(
+    new THREE.BoxGeometry(totalSpan + 0.05, plinthH, totalSpan + 0.05),
+    mats.stone
+  );
+  plinth.position.y = ped.top + plinthH / 2;
+  plinth.castShadow = true;
+  group.add(plinth);
+  const tubeBaseY = ped.top + plinthH;
+
+  // Shared materials — referenced once per tube so the GPU batches them.
+  const frameMat = mats.dark;
+  const glassMat = mats.glass;
+  const capMat = mats.metal;
+  const mullionMat = mats.dark;
+
+  // Track the two tallest tubes for antenna placement.
+  const tallTubes = [];
+
   for (let i = 0; i < 3; i++) {
     for (let j = 0; j < 3; j++) {
-      const h = heights[i][j];
-      maxH = Math.max(maxH, h);
+      const h = heights[i][j] * fullH;
+      const x = baseOffset + i * (tubeW + gap);
+      const z = baseOffset + j * (tubeW + gap);
+
+      // Structural frame: dark steel box (Willis's signature black-clad tube)
       const tube = new THREE.Mesh(
         new THREE.BoxGeometry(tubeW, h, tubeW),
-        mats.dark
+        frameMat
       );
-      tube.position.set(
-        base + i * (tubeW + gap),
-        ped.top + h / 2,
-        base + j * (tubeW + gap)
-      );
+      tube.position.set(x, tubeBaseY + h / 2, z);
       tube.castShadow = true;
       group.add(tube);
 
-      // window strips
+      // Inset glass curtain wall on each face (slightly smaller than frame)
+      const winInset = 0.012;
       const win = new THREE.Mesh(
-        new THREE.BoxGeometry(tubeW * 0.7, h * 0.85, tubeW * 0.7),
-        mats.glass
+        new THREE.BoxGeometry(
+          tubeW - winInset * 2,
+          h * 0.97,
+          tubeW - winInset * 2
+        ),
+        glassMat
       );
-      win.position.copy(tube.position);
+      win.position.set(x, tubeBaseY + h / 2, z);
       group.add(win);
 
-      // top cap
+      // Vertical corner mullions — the steel exoskeleton at each tube edge.
+      // Four mullions per tube; full height. This is what makes the
+      // bundled-tube structure read as structural, not decorative.
+      for (const dx of [-1, 1]) {
+        for (const dz of [-1, 1]) {
+          const mullion = new THREE.Mesh(
+            new THREE.BoxGeometry(0.012, h, 0.012),
+            mullionMat
+          );
+          mullion.position.set(
+            x + (dx * tubeW) / 2,
+            tubeBaseY + h / 2,
+            z + (dz * tubeW) / 2
+          );
+          mullion.castShadow = true;
+          group.add(mullion);
+        }
+      }
+
+      // Horizontal belt courses at setback levels — only on tubes still
+      // climbing past that level. These imply the structural floor diaphragms
+      // that tie the bundle together.
+      const setbacks = [SHORT * fullH, MED * fullH];
+      for (const lev of setbacks) {
+        if (h > lev + 0.05) {
+          const belt = new THREE.Mesh(
+            new THREE.BoxGeometry(tubeW + 0.005, 0.018, tubeW + 0.005),
+            frameMat
+          );
+          belt.position.set(x, tubeBaseY + lev, z);
+          group.add(belt);
+        }
+      }
+
+      // Mechanical cap on tubes that terminate (setback tubes get a clear
+      // dark slab so the setback reads as intentional, not decorative).
       const cap = new THREE.Mesh(
-        new THREE.BoxGeometry(tubeW, 0.02, tubeW),
-        mats.metal
+        new THREE.BoxGeometry(tubeW + 0.006, 0.04, tubeW + 0.006),
+        h === TALL * fullH ? capMat : frameMat
       );
-      cap.position.set(tube.position.x, ped.top + h + 0.01, tube.position.z);
+      cap.position.set(x, tubeBaseY + h + 0.02, z);
+      cap.castShadow = true;
       group.add(cap);
+
+      // Rooftop mechanical penthouse on the two shortest tubes (where the
+      // first setback occurs in real life — emphasizes the stepdown).
+      if (heights[i][j] === SHORT) {
+        const penthouse = new THREE.Mesh(
+          new THREE.BoxGeometry(tubeW * 0.55, 0.055, tubeW * 0.55),
+          mats.stone
+        );
+        penthouse.position.set(x, tubeBaseY + h + 0.07, z);
+        penthouse.castShadow = true;
+        group.add(penthouse);
+      }
+
+      if (heights[i][j] === TALL) tallTubes.push({ x, z });
     }
   }
 
-  // twin antennae (Willis has two)
-  for (const x of [-0.05, 0.05]) {
+  // ---- Twin antennae on the two tallest tubes ----
+  const antH = 0.6;
+  for (const t of tallTubes) {
     const ant = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.006, 0.014, 0.55, 10),
+      new THREE.CylinderGeometry(0.007, 0.014, antH, 10),
       mats.metal
     );
-    ant.position.set(x, ped.top + maxH + 0.275, 0);
+    ant.position.set(t.x, tubeBaseY + fullH + 0.04 + antH / 2, t.z);
     ant.castShadow = true;
     group.add(ant);
+
+    // segment ring partway up the antenna (suggests the cross-bracing)
+    const seg = new THREE.Mesh(
+      new THREE.TorusGeometry(0.018, 0.004, 6, 12),
+      mats.metal
+    );
+    seg.position.set(t.x, tubeBaseY + fullH + 0.04 + antH * 0.5, t.z);
+    seg.rotation.x = Math.PI / 2;
+    group.add(seg);
+
     const beacon = new THREE.Mesh(
       new THREE.SphereGeometry(0.022, 10, 8),
       mats.accent
     );
-    beacon.position.set(x, ped.top + maxH + 0.56, 0);
+    beacon.position.set(t.x, tubeBaseY + fullH + 0.04 + antH, t.z);
     beacon.userData.isBeacon = true;
     group.add(beacon);
   }
 
-  // crown cross at top (king marker)
-  const cBase = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.08, 0.09, 0.04, 16),
-    mats.accent
-  );
-  cBase.position.y = ped.top + maxH + 0.02;
-  group.add(cBase);
-  const cV = new THREE.Mesh(
-    new THREE.BoxGeometry(0.025, 0.12, 0.025),
-    mats.accent
-  );
-  cV.position.y = ped.top + maxH + 0.1;
-  group.add(cV);
-  const cH = new THREE.Mesh(
-    new THREE.BoxGeometry(0.08, 0.025, 0.025),
-    mats.accent
-  );
-  cH.position.y = ped.top + maxH + 0.1;
-  group.add(cH);
+  // ---- King crown marker on the tallest tube ----
+  if (tallTubes.length > 0) {
+    const t = tallTubes[0];
+    const crownY = tubeBaseY + fullH + 0.04;
+    const cBase = new THREE.Mesh(
+      new THREE.TorusGeometry(0.05, 0.011, 8, 18),
+      mats.accent
+    );
+    cBase.position.set(t.x, crownY + 0.02, t.z);
+    cBase.rotation.x = Math.PI / 2;
+    group.add(cBase);
+    const cV = new THREE.Mesh(
+      new THREE.BoxGeometry(0.022, 0.08, 0.022),
+      mats.accent
+    );
+    cV.position.set(t.x, crownY + 0.07, t.z);
+    group.add(cV);
+    const cH = new THREE.Mesh(
+      new THREE.BoxGeometry(0.06, 0.022, 0.022),
+      mats.accent
+    );
+    cH.position.set(t.x, crownY + 0.08, t.z);
+    group.add(cH);
+  }
 
-  group.userData.height = ped.top + maxH + 0.6;
+  group.userData.height = tubeBaseY + fullH + antH + 0.08;
   return group;
 }
 

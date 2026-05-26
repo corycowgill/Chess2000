@@ -147,6 +147,78 @@
           >
             Play
           </button>
+          <button
+            id="loading-gallery"
+            class="hud-btn"
+            style="margin-top: 6px"
+            hidden
+          >
+            See the Pieces
+          </button>
+        </div>
+      </div>
+
+      <div id="gallery" class="overlay" hidden>
+        <div class="panel gallery-panel">
+          <div class="panel-corners">
+            <svg class="cstar tiny"><use href="#chi-star" /></svg>
+            <svg class="cstar tiny"><use href="#chi-star" /></svg>
+            <svg class="cstar tiny"><use href="#chi-star" /></svg>
+            <svg class="cstar tiny"><use href="#chi-star" /></svg>
+          </div>
+          <h2>The Pieces</h2>
+          <p class="kicker">Six Chicago landmarks</p>
+          <div class="gallery-grid">
+            <div class="gallery-card" data-piece="K">
+              <div class="thumb"></div>
+              <div class="card-meta">
+                <h3>Willis Tower</h3>
+                <small>King</small>
+                <p>Bruce Graham's 1973 bundled-tube skyscraper with stepped setbacks and twin antennae.</p>
+              </div>
+            </div>
+            <div class="gallery-card" data-piece="Q">
+              <div class="thumb"></div>
+              <div class="card-meta">
+                <h3>John Hancock Center</h3>
+                <small>Queen</small>
+                <p>1969 trapezoidal tower with diagonal X-bracing on every face.</p>
+              </div>
+            </div>
+            <div class="gallery-card" data-piece="R">
+              <div class="thumb"></div>
+              <div class="card-meta">
+                <h3>Marina City</h3>
+                <small>Rook</small>
+                <p>Bertrand Goldberg's 1964 cylindrical &ldquo;corncob&rdquo; tower with scalloped balconies.</p>
+              </div>
+            </div>
+            <div class="gallery-card" data-piece="B">
+              <div class="thumb"></div>
+              <div class="card-meta">
+                <h3>Cloud Gate</h3>
+                <small>Bishop</small>
+                <p>Anish Kapoor's mirrored sculpture &mdash; &ldquo;The Bean&rdquo; &mdash; in Millennium Park.</p>
+              </div>
+            </div>
+            <div class="gallery-card" data-piece="N">
+              <div class="thumb"></div>
+              <div class="card-meta">
+                <h3>Chicago Theatre</h3>
+                <small>Knight</small>
+                <p>The 1921 vertical CHICAGO sign and arched marquee over State Street.</p>
+              </div>
+            </div>
+            <div class="gallery-card" data-piece="P">
+              <div class="thumb"></div>
+              <div class="card-meta">
+                <h3>Flag Star</h3>
+                <small>Pawn</small>
+                <p>The six-pointed red star &mdash; one of four on the Chicago flag.</p>
+              </div>
+            </div>
+          </div>
+          <button id="gallery-close" class="hud-btn primary">Back</button>
         </div>
       </div>
     </div>
@@ -159,21 +231,35 @@
         const errEl = document.getElementById("loading-error");
         const kickerEl = document.getElementById("loading-kicker");
         const startBtn = document.getElementById("loading-start");
+        const galleryBtn = document.getElementById("loading-gallery");
+        const galleryEl = document.getElementById("gallery");
+        const galleryCloseBtn = document.getElementById("gallery-close");
 
         function dismiss() {
           if (loadingEl) loadingEl.hidden = true;
         }
+        function openGallery() {
+          if (galleryEl) galleryEl.hidden = false;
+        }
+        function closeGallery() {
+          if (galleryEl) galleryEl.hidden = true;
+        }
 
         startBtn.addEventListener("click", dismiss);
+        galleryBtn.addEventListener("click", openGallery);
+        galleryCloseBtn.addEventListener("click", closeGallery);
 
         // Expose helpers so main.js can update state once the scene is ready.
         window.__chicagoChess = {
           ready: function () {
             if (kickerEl) kickerEl.textContent = "Tap Play to begin";
             startBtn.hidden = false;
+            galleryBtn.hidden = false;
             try { startBtn.focus({ preventScroll: true }); } catch (_) {}
           },
           dismiss: dismiss,
+          openGallery: openGallery,
+          closeGallery: closeGallery,
           error: function (msg) {
             if (!errEl) return;
             errEl.hidden = false;
