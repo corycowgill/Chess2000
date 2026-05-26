@@ -45,6 +45,11 @@ body {
   touch-action: none;
 }
 
+/* Make the HTML `hidden` attribute actually win over `.overlay { display: flex }`. */
+[hidden] {
+  display: none !important;
+}
+
 #app {
   position: fixed;
   inset: 0;
