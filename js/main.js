@@ -334,6 +334,7 @@ function animateMove(from, to, durationMs = 260) {
     if (!mesh) return resolve();
     pieceMeshes.delete(key);
     pieceMeshes.set(`${to.r},${to.f}`, mesh);
+    mesh.userData.coords = { r: to.r, f: to.f };
 
     const start = mesh.position.clone();
     const end = squareToWorld(to.r, to.f);
@@ -532,6 +533,8 @@ function scheduleCpuMove() {
 // ---------------- Input ----------------
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
+const _boardPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const _planeHit = new THREE.Vector3();
 let pointerDownPos = null;
 let pointerDownTime = 0;
 
@@ -542,29 +545,61 @@ function eventToNDC(e) {
   return { x, y };
 }
 
+function squareFromPlanePoint(p) {
+  const f = Math.round(p.x / SQ + 3.5);
+  const r = Math.round(-p.z / SQ + 3.5);
+  if (r < 0 || r > 7 || f < 0 || f > 7) return null;
+  return { r, f };
+}
+
 function pickSquare(e) {
   const { x, y } = eventToNDC(e);
   pointer.set(x, y);
   raycaster.setFromCamera(pointer, camera);
-  // First try piece groups (so tall pieces are easier to tap)
+
+  // Plane pick: where the ray actually intersects the board surface.
+  // Most reliable for empty squares, even when a tall piece is in front.
+  let planeSq = null;
+  if (raycaster.ray.intersectPlane(_boardPlane, _planeHit)) {
+    planeSq = squareFromPlanePoint(_planeHit);
+  }
+
+  // Piece pick: lets users tap the tall part of a piece to select it.
+  let pieceSq = null;
   const meshes = [];
-  for (const [, mesh] of pieceMeshes) mesh.traverse((o) => o.isMesh && meshes.push(o));
-  let hit = raycaster.intersectObjects(meshes, false);
+  for (const [, mesh] of pieceMeshes)
+    mesh.traverse((o) => o.isMesh && meshes.push(o));
+  const hit = raycaster.intersectObjects(meshes, false);
   if (hit.length) {
-    // find ancestor with coords
     let o = hit[0].object;
     while (o && !o.userData.coords) o = o.parent;
-    if (o && o.userData.coords) return { ...o.userData.coords, source: "piece" };
+    if (o && o.userData.coords) {
+      pieceSq = { r: o.userData.coords.r, f: o.userData.coords.f };
+    }
   }
-  // Fall back to board squares
-  const allSquares = [];
-  for (let r = 0; r < 8; r++) for (let f = 0; f < 8; f++) allSquares.push(squareMeshes[r][f]);
-  hit = raycaster.intersectObjects(allSquares, false);
-  if (hit.length) {
-    const o = hit[0].object;
-    return { r: o.userData.r, f: o.userData.f, source: "square" };
+
+  if (!planeSq && !pieceSq) return null;
+  if (!planeSq) return pieceSq;
+  if (!pieceSq) return planeSq;
+  if (planeSq.r === pieceSq.r && planeSq.f === pieceSq.f) return planeSq;
+
+  // Tap landed on a piece whose square ISN'T where the user's finger is
+  // pointing on the board. The piece was in the way (taller than the
+  // target). When a piece is selected and the plane pick is a legal
+  // destination, prefer the plane pick — that's what the user meant.
+  if (selectedSq) {
+    const planeIsLegal = legalForSelected.some(
+      (m) => m.to.r === planeSq.r && m.to.f === planeSq.f
+    );
+    if (planeIsLegal) return planeSq;
+    const pieceIsLegal = legalForSelected.some(
+      (m) => m.to.r === pieceSq.r && m.to.f === pieceSq.f
+    );
+    if (pieceIsLegal) return pieceSq;
   }
-  return null;
+  // No selection (or neither pick is legal): pick whichever is closer to
+  // the tap — that's almost always the piece itself in the foreground.
+  return pieceSq;
 }
 
 function onPointerDown(e) {
