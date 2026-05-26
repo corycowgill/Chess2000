@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0a1a2f" />
+    <title>Chicago Chess</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="scene"></canvas>
+
+      <header id="hud-top">
+        <div class="brand">
+          <span class="star">&#9733;</span>
+          <span class="title">Chicago Chess</span>
+          <span class="star">&#9733;</span>
+        </div>
+        <div id="status">White to move</div>
+      </header>
+
+      <aside id="captured-w" class="captured" aria-label="Captured white pieces"></aside>
+      <aside id="captured-b" class="captured" aria-label="Captured black pieces"></aside>
+
+      <footer id="hud-bottom">
+        <button id="btn-new" class="hud-btn">New Game</button>
+        <button id="btn-mode" class="hud-btn">Mode: vs CPU</button>
+        <button id="btn-swap" class="hud-btn" hidden>Pass Device</button>
+        <button id="btn-undo" class="hud-btn">Undo</button>
+        <button id="btn-rotate" class="hud-btn">Flip View</button>
+      </footer>
+
+      <div id="promo" class="overlay" hidden>
+        <div class="panel">
+          <h2>Promote pawn</h2>
+          <div class="promo-row">
+            <button data-promo="Q">Queen</button>
+            <button data-promo="R">Rook</button>
+            <button data-promo="B">Bishop</button>
+            <button data-promo="N">Knight</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="endgame" class="overlay" hidden>
+        <div class="panel">
+          <h2 id="endgame-title">Game over</h2>
+          <p id="endgame-sub"></p>
+          <button id="endgame-again" class="hud-btn primary">Play again</button>
+        </div>
+      </div>
+
+      <div id="pass" class="overlay" hidden>
+        <div class="panel">
+          <h2>Pass the device</h2>
+          <p id="pass-sub">Hand to the other player.</p>
+          <button id="pass-ok" class="hud-btn primary">Ready</button>
+        </div>
+      </div>
+
+      <div id="loading" class="overlay">
+        <div class="panel">
+          <h2>Chicago Chess</h2>
+          <p>Loading the skyline&hellip;</p>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="./js/main.js"></script>
+  </body>
+</html>
