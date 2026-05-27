@@ -641,112 +641,255 @@ function buildBishop(color) {
   return group;
 }
 
-// QUEEN — John Hancock Center (tapered tower with X-bracing)
+// QUEEN — John Hancock Center (Bruce Graham/Fazlur Khan, 1969). Trapezoidal
+// tapered tower with the iconic exposed X-bracing exoskeleton spanning the
+// full height. Anatomy: continuous truncated-pyramid shaft (not stacked
+// boxes), 5 stacked X-braces with their structural horizontal chords at
+// each setback level, regular horizontal floor lines, glowing signature
+// observation deck near the top, recessed roof platform with mechanical
+// penthouse, twin antenna masts with collar rings and red aviation beacons.
 function buildQueen(color) {
   const mats = materials(color);
   const group = new THREE.Group();
-  const ped = pedestal(mats, 0.36, 0.1);
+  const ped = pedestal(mats, 0.4, 0.1);
   group.add(ped.group);
 
-  // Tapered shaft: build from segments getting narrower
-  const segments = 4;
-  const totalH = 1.4;
-  const segH = totalH / segments;
-  let y = ped.top;
-  for (let i = 0; i < segments; i++) {
-    const wBottom = 0.52 - i * 0.08;
-    const wTop = 0.52 - (i + 1) * 0.08;
-    const geo = new THREE.CylinderGeometry(
-      wTop * 0.5,
-      wBottom * 0.5,
-      segH,
+  // ---- Continuously tapered shaft (one truncated pyramid, not segments) ----
+  // Cross-section is a square inscribed in a circle of these radii. Diagonal
+  // width corresponds to width across the corners.
+  const baseY = ped.top;
+  const shaftH = 1.55;
+  const baseR = 0.26; // bottom half-diagonal
+  const topR = 0.13; // top half-diagonal (real Hancock tapers ~50%)
+
+  const shaftGeo = new THREE.CylinderGeometry(topR, baseR, shaftH, 4, 1);
+  shaftGeo.rotateY(Math.PI / 4); // square aligned with x/z axes
+  const shaft = new THREE.Mesh(shaftGeo, mats.dark);
+  shaft.position.y = baseY + shaftH / 2;
+  shaft.castShadow = true;
+  group.add(shaft);
+
+  // Inset dark-glass curtain wall (slightly recessed inside the steel frame)
+  const glassGeo = new THREE.CylinderGeometry(
+    topR * 0.92,
+    baseR * 0.92,
+    shaftH * 0.985,
+    4,
+    1
+  );
+  glassGeo.rotateY(Math.PI / 4);
+  const glass = new THREE.Mesh(glassGeo, mats.glass);
+  glass.position.y = baseY + shaftH / 2;
+  group.add(glass);
+
+  // ---- Horizontal floor lines suggesting Hancock's 100 floors ----
+  // 16 thin metal rings up the shaft.
+  const floors = 16;
+  for (let i = 1; i < floors; i++) {
+    const t = i / floors;
+    const radius = baseR + (topR - baseR) * t;
+    const lineGeo = new THREE.CylinderGeometry(
+      radius + 0.0015,
+      radius + 0.0015,
+      0.006,
       4,
       1
     );
-    geo.rotateY(Math.PI / 4); // square cross-section
-    const seg = new THREE.Mesh(geo, mats.dark);
-    seg.position.y = y + segH / 2;
-    seg.castShadow = true;
-    group.add(seg);
+    lineGeo.rotateY(Math.PI / 4);
+    const line = new THREE.Mesh(lineGeo, mats.metal);
+    line.position.y = baseY + t * shaftH;
+    group.add(line);
+  }
 
-    // glass band on faces
-    const glassG = new THREE.Mesh(
-      new THREE.CylinderGeometry(
-        wTop * 0.5 - 0.005,
-        wBottom * 0.5 - 0.005,
-        segH * 0.85,
-        4,
-        1
-      ),
-      mats.glass
-    );
-    glassG.geometry.rotateY(Math.PI / 4);
-    glassG.position.y = y + segH / 2;
-    glassG.scale.set(0.985, 1, 0.985);
-    group.add(glassG);
+  // ---- 5 stacked X-braces (the famous exoskeleton) ----
+  // Each X spans a chunk of the building height; horizontal chord at the
+  // top of each X reinforces the diagonal grid.
+  const numX = 5;
 
-    // X-bracing: two diagonals on each face
+  // Helper: half-diagonal radius at a given height parameter t (0..1)
+  function radiusAt(t) {
+    return baseR + (topR - baseR) * t;
+  }
+
+  for (let n = 0; n < numX; n++) {
+    const t0 = n / numX;
+    const t1 = (n + 1) / numX;
+    const y0 = baseY + t0 * shaftH;
+    const y1 = baseY + t1 * shaftH;
+    const segH = y1 - y0;
+    const r0 = radiusAt(t0);
+    const r1 = radiusAt(t1);
+    const rMid = (r0 + r1) / 2;
+
+    // Square face width at the midpoint = 2 * r * sin(45°) = r * √2 ... no
+    // Actually with square cross-section inscribed in circle of radius r,
+    // the square's side length (face width) = r * √2. But we want the
+    // distance between two adjacent corners along one face — that IS the
+    // side length.
+    const faceW = rMid * Math.sqrt(2);
+    const diagLen = Math.sqrt(faceW * faceW + segH * segH);
+
     for (let face = 0; face < 4; face++) {
-      const ang = (face * Math.PI) / 2;
-      const wMid = (wBottom + wTop) * 0.5;
-      const halfW = wMid * 0.5;
-      const diagLen = Math.sqrt(halfW * halfW * 4 + segH * segH);
+      const ang = (face * Math.PI) / 2 + Math.PI / 4;
+      // The center of each face is at distance r/√2 from the y axis,
+      // perpendicular to the face. For our square cross-section the
+      // face centers are at angle (face * 90° + 45°).
+      // Actually let me think again. CylinderGeometry with 4 segments and
+      // rotateY(π/4) places vertices at angles 0°, 90°, 180°, 270°. So
+      // the corners are along the X and Z axes. The faces are between
+      // corners, with centers at 45°, 135°, 225°, 315°.
+      const fcX = Math.cos(ang);
+      const fcZ = Math.sin(ang);
+      // Distance from y axis to face center (perpendicular)
+      // For inscribed square, face-center distance = r * cos(45°) = r/√2
+      const faceDist = rMid / Math.sqrt(2);
+
+      // Two diagonals forming the X on this face
       for (const dir of [-1, 1]) {
         const brace = new THREE.Mesh(
-          new THREE.BoxGeometry(0.025, diagLen, 0.025),
+          new THREE.BoxGeometry(0.022, diagLen, 0.022),
           mats.metal
         );
         brace.position.set(
-          Math.cos(ang) * (wMid * 0.5 + 0.005),
-          y + segH / 2,
-          Math.sin(ang) * (wMid * 0.5 + 0.005)
+          fcX * (faceDist + 0.005),
+          y0 + segH / 2,
+          fcZ * (faceDist + 0.005)
         );
+        // First rotate around y so the brace lies on this face's plane
+        // (face plane is perpendicular to (fcX, 0, fcZ))
         brace.rotation.y = ang + Math.PI / 2;
-        brace.rotation.z = dir * Math.atan2(wMid, segH);
+        // Then tilt diagonally so it goes corner-to-corner of the X
+        brace.rotation.z = dir * Math.atan2(faceW, segH);
         brace.castShadow = true;
         group.add(brace);
       }
-    }
 
-    y += segH;
+      // Horizontal chord at the TOP of each X (structural beam tying the
+      // bracing together at every setback level)
+      const chordTop = new THREE.Mesh(
+        new THREE.BoxGeometry(faceW * 1.02, 0.026, 0.02),
+        mats.metal
+      );
+      chordTop.position.set(
+        fcX * (radiusAt(t1) / Math.sqrt(2) + 0.005),
+        y1 - 0.013,
+        fcZ * (radiusAt(t1) / Math.sqrt(2) + 0.005)
+      );
+      chordTop.rotation.y = ang + Math.PI / 2;
+      group.add(chordTop);
+    }
   }
 
-  // roof platform
-  const roof = new THREE.Mesh(
-    new THREE.BoxGeometry(0.18, 0.04, 0.18),
-    mats.stone
-  );
-  roof.position.y = y + 0.02;
-  group.add(roof);
-
-  // twin antenna spires
-  for (const x of [-0.05, 0.05]) {
-    const ant = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.005, 0.012, 0.4, 8),
+  // Bottom horizontal chord at the very base of the bracing system
+  for (let face = 0; face < 4; face++) {
+    const ang = (face * Math.PI) / 2 + Math.PI / 4;
+    const faceW0 = baseR * Math.sqrt(2);
+    const chordBot = new THREE.Mesh(
+      new THREE.BoxGeometry(faceW0 * 1.02, 0.028, 0.022),
       mats.metal
     );
-    ant.position.set(x, y + 0.04 + 0.2, 0);
-    ant.castShadow = true;
-    group.add(ant);
-    // beacon
-    const beacon = new THREE.Mesh(
-      new THREE.SphereGeometry(0.018, 10, 8),
-      mats.accent
+    chordBot.position.set(
+      Math.cos(ang) * (baseR / Math.sqrt(2) + 0.005),
+      baseY + 0.014,
+      Math.sin(ang) * (baseR / Math.sqrt(2) + 0.005)
     );
-    beacon.position.set(x, y + 0.04 + 0.4, 0);
-    group.add(beacon);
+    chordBot.rotation.y = ang + Math.PI / 2;
+    group.add(chordBot);
   }
 
-  // crown ring (queen marker)
+  // ---- Signature lit observation-deck band (96th floor in real life) ----
+  const obsT = 0.92;
+  const obsR = radiusAt(obsT);
+  const obsBandGeo = new THREE.CylinderGeometry(
+    obsR + 0.004,
+    obsR + 0.004,
+    0.04,
+    4,
+    1
+  );
+  obsBandGeo.rotateY(Math.PI / 4);
+  const obsBand = new THREE.Mesh(
+    obsBandGeo,
+    new THREE.MeshStandardMaterial({
+      color: 0xffd6a0,
+      emissive: 0xffb060,
+      emissiveIntensity: 0.85,
+      roughness: 0.3,
+      metalness: 0.4,
+    })
+  );
+  obsBand.position.y = baseY + obsT * shaftH;
+  group.add(obsBand);
+
+  // ---- Roof platform (slightly inset from the shaft top) ----
+  const roofY = baseY + shaftH;
+  const roofW = topR * 1.6;
+  const roof = new THREE.Mesh(
+    new THREE.BoxGeometry(roofW, 0.03, roofW),
+    mats.dark
+  );
+  roof.position.y = roofY + 0.015;
+  group.add(roof);
+
+  // Mechanical penthouse on the roof
+  const penthouse = new THREE.Mesh(
+    new THREE.BoxGeometry(roofW * 0.55, 0.07, roofW * 0.55),
+    mats.dark
+  );
+  penthouse.position.y = roofY + 0.07;
+  penthouse.castShadow = true;
+  group.add(penthouse);
+
+  // Queen marker: subtle accent ring sitting around the penthouse base
   const crown = new THREE.Mesh(
-    new THREE.TorusGeometry(0.085, 0.018, 12, 28),
+    new THREE.TorusGeometry(roofW * 0.5, 0.012, 10, 32),
     mats.accent
   );
-  crown.position.y = y + 0.04;
+  crown.position.y = roofY + 0.045;
   crown.rotation.x = Math.PI / 2;
   group.add(crown);
 
-  group.userData.height = y + 0.5;
+  // ---- Twin antenna masts (Hancock's signature pair) ----
+  const antH = 0.6;
+  for (const x of [-0.045, 0.045]) {
+    // Main mast — tapered
+    const ant = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.006, 0.014, antH, 10),
+      mats.metal
+    );
+    ant.position.set(x, roofY + 0.12 + antH / 2, 0);
+    ant.castShadow = true;
+    group.add(ant);
+
+    // Collar ring 1/3 up
+    const ring1 = new THREE.Mesh(
+      new THREE.TorusGeometry(0.022, 0.005, 6, 14),
+      mats.metal
+    );
+    ring1.position.set(x, roofY + 0.12 + antH * 0.34, 0);
+    ring1.rotation.x = Math.PI / 2;
+    group.add(ring1);
+
+    // Collar ring 2/3 up
+    const ring2 = new THREE.Mesh(
+      new THREE.TorusGeometry(0.018, 0.005, 6, 14),
+      mats.metal
+    );
+    ring2.position.set(x, roofY + 0.12 + antH * 0.68, 0);
+    ring2.rotation.x = Math.PI / 2;
+    group.add(ring2);
+
+    // Red aviation beacon on top
+    const beacon = new THREE.Mesh(
+      new THREE.SphereGeometry(0.022, 10, 8),
+      mats.accent
+    );
+    beacon.position.set(x, roofY + 0.12 + antH, 0);
+    beacon.userData.isBeacon = true;
+    group.add(beacon);
+  }
+
+  group.userData.height = roofY + 0.12 + antH + 0.05;
   return group;
 }
 
