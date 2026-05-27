@@ -1677,147 +1677,853 @@ function createAdlerPlanetarium() {
   return g;
 }
 
-// ---- Soldier Field — Doric colonnade base + modern bowl above ----
+// ---- Soldier Field — Doric colonnade base (1924) with the 2003
+//      saucer renovation: an elliptical glass-and-steel UFO-shaped
+//      bowl that overhangs the historic limestone colonnade, with
+//      the open playing field visible in the middle and an
+//      asymmetric grandstand profile. ----
 function createSoldierField() {
   const g = new THREE.Group();
   const LIMESTONE = mat(0xd6cba6, { roughness: 0.85 });
+  const LIMESTONE_DARK = mat(0xb5a785, { roughness: 0.85 });
   const CREAM = mat(0xf2e8ca, { roughness: 0.7 });
+  const STEEL = mat(0x2a3340, { roughness: 0.45, metalness: 0.5 });
+  const STEEL_DARK = mat(0x1a2030, { roughness: 0.5, metalness: 0.55 });
+  const GLASS = mat(0x6fa9c4, {
+    roughness: 0.18,
+    metalness: 0.75,
+    emissive: 0x2b4a5a,
+    emissiveIntensity: 0.5,
+  });
+  const FIELD_GREEN = mat(0x3c6b32, { roughness: 0.92 });
 
-  // Lower colonnade base
-  const base = nonShadow(new THREE.Mesh(new THREE.BoxGeometry(10, 1.7, 5.8), LIMESTONE));
-  base.position.y = 0.85;
+  // ===== Historic limestone colonnade base (1924) =====
+  // Long thin base — Soldier Field's footprint is much longer than it is
+  // wide. The base reads as the "podium" beneath the 2003 saucer.
+  const baseW = 11;
+  const baseD = 5.4;
+  const baseH = 1.5;
+  const base = nonShadow(
+    new THREE.Mesh(new THREE.BoxGeometry(baseW, baseH, baseD), LIMESTONE)
+  );
+  base.position.y = baseH / 2 + 0.1;
   g.add(base);
 
-  // Column rows on both long sides (Doric)
+  // Stepped plinth under the base
+  const plinth = nonShadow(
+    new THREE.Mesh(new THREE.BoxGeometry(baseW + 0.4, 0.2, baseD + 0.4), LIMESTONE_DARK)
+  );
+  plinth.position.y = 0.1;
+  g.add(plinth);
+
+  // Doric column rows on both long sides
   for (const side of [-1, 1]) {
-    for (let i = 0; i < 13; i++) {
-      const col = nonShadow(new THREE.Mesh(
-        new THREE.CylinderGeometry(0.16, 0.16, 1.5, 10),
-        CREAM
-      ));
-      col.position.set(-4.5 + i * 0.75, 0.95, side * 2.8);
-      g.add(col);
+    for (let i = 0; i < 15; i++) {
+      const colX = -5.25 + i * 0.75;
+      // Shaft
+      const shaft = nonShadow(
+        new THREE.Mesh(
+          new THREE.CylinderGeometry(0.13, 0.13, 1.35, 10),
+          CREAM
+        )
+      );
+      shaft.position.set(colX, 0.875, side * (baseD / 2 - 0.2));
+      g.add(shaft);
+      // Capital (simple Doric square block)
+      const cap = nonShadow(
+        new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.1, 0.32), CREAM)
+      );
+      cap.position.set(colX, 1.6, side * (baseD / 2 - 0.2));
+      g.add(cap);
     }
   }
 
-  // Entablature
-  const entab = nonShadow(new THREE.Mesh(new THREE.BoxGeometry(10.2, 0.32, 5.95), mat(0xc6b988, { roughness: 0.7 })));
-  entab.position.y = 1.85;
+  // Entablature on top of the colonnade
+  const entab = nonShadow(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(baseW + 0.2, 0.32, baseD + 0.2),
+      mat(0xc6b988, { roughness: 0.7 })
+    )
+  );
+  entab.position.y = 1.75;
   g.add(entab);
 
-  // The modern bowl — leaning trapezoidal mass with glass band
-  const bowl = nonShadow(new THREE.Mesh(
-    new THREE.BoxGeometry(8.5, 2.2, 5),
-    mat(0x3c4a5e, {
-      roughness: 0.4,
-      metalness: 0.5,
-      emissive: 0x0a121e,
-      emissiveIntensity: 0.4,
-    })
-  ));
-  bowl.position.y = 3.15;
-  g.add(bowl);
+  // Cornice projection
+  const cornice = nonShadow(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(baseW + 0.35, 0.12, baseD + 0.35),
+      LIMESTONE_DARK
+    )
+  );
+  cornice.position.y = 1.94;
+  g.add(cornice);
 
-  // Glass band wrapping the bowl
-  const glassBand = nonShadow(new THREE.Mesh(
-    new THREE.BoxGeometry(8.55, 0.75, 5.05),
-    mat(0x6fa9c4, {
-      roughness: 0.25,
-      metalness: 0.7,
-      emissive: 0x2b4a5a,
-      emissiveIntensity: 0.45,
-    })
-  ));
-  glassBand.position.y = 3.15;
+  // ===== 2003 SAUCER — elliptical bowl OVERHANGING the colonnade =====
+  // The signature of the renovation: a UFO-shaped glass/steel bowl that
+  // sits dramatically above and projects beyond the historic colonnade.
+  // Built from stacked elliptical layers to make a lens / saucer shape.
+  const saucerY = 2.5; // sits above the cornice with visible gap (you can
+                       // see through the gap to the colonnade behind)
+  const saucerW = 13.5; // significantly WIDER than the base (overhangs)
+  const saucerD = 7.5;
+  const saucerH = 2.2;
+
+  // Steel "stilt" supports lifting the saucer above the colonnade
+  // (suggests the cantilevered structural columns of the renovation)
+  for (const sx of [-4, -1.5, 1.5, 4]) {
+    for (const sz of [-1, 1]) {
+      const stilt = nonShadow(
+        new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.6, 0.18), STEEL_DARK)
+      );
+      stilt.position.set(sx, 2.3, sz * (baseD / 2 - 0.05));
+      g.add(stilt);
+    }
+  }
+
+  // ---- Saucer underside (bottom of the lens — convex bulge downward) ----
+  // Use a flattened sphere bottom cap
+  const undersideGeo = new THREE.SphereGeometry(
+    1,
+    32,
+    16,
+    0,
+    Math.PI * 2,
+    Math.PI / 2,
+    Math.PI / 2
+  );
+  const underside = nonShadow(new THREE.Mesh(undersideGeo, STEEL_DARK));
+  underside.scale.set(saucerW / 2, saucerH * 0.35, saucerD / 2);
+  underside.position.y = saucerY + 0.3;
+  g.add(underside);
+
+  // ---- Middle glass band (the seating bowl glazing) ----
+  // Two-stack of squat elliptical "drums" so the saucer has structure
+  const glassBand = nonShadow(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(1, 1, 0.85, 48, 1),
+      GLASS
+    )
+  );
+  glassBand.scale.set(saucerW / 2, 1, saucerD / 2);
+  glassBand.position.y = saucerY + 0.75;
   g.add(glassBand);
 
-  // Roof rim
-  const roofRim = nonShadow(new THREE.Mesh(new THREE.BoxGeometry(8.6, 0.18, 5.1), mat(0x2a3340)));
-  roofRim.position.y = 4.27;
-  g.add(roofRim);
+  // Steel mullions vertically segmenting the glass band
+  const mullionCount = 48;
+  for (let i = 0; i < mullionCount; i++) {
+    const ang = (i / mullionCount) * Math.PI * 2;
+    const ex = Math.cos(ang) * (saucerW / 2 + 0.02);
+    const ez = Math.sin(ang) * (saucerD / 2 + 0.02);
+    const mull = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.85, 0.04), STEEL)
+    );
+    mull.position.set(ex, saucerY + 0.75, ez);
+    mull.rotation.y = -ang;
+    g.add(mull);
+  }
+
+  // ---- Upper steel band wrapping the top of the glass ----
+  const upperBand = nonShadow(
+    new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 0.18, 48, 1), STEEL)
+  );
+  upperBand.scale.set(saucerW / 2 + 0.02, 1, saucerD / 2 + 0.02);
+  upperBand.position.y = saucerY + 1.27;
+  g.add(upperBand);
+
+  // ---- Saucer top — convex bulge upward forming the lens shape ----
+  // This is the "UFO roof" cantilevering out over the seating
+  const topCapGeo = new THREE.SphereGeometry(
+    1,
+    32,
+    16,
+    0,
+    Math.PI * 2,
+    0,
+    Math.PI / 2
+  );
+  const topCap = nonShadow(new THREE.Mesh(topCapGeo, STEEL));
+  topCap.scale.set(saucerW / 2 + 0.05, saucerH * 0.32, saucerD / 2 + 0.05);
+  topCap.position.y = saucerY + 1.36;
+  g.add(topCap);
+
+  // ---- Open oval hole in the top (the stadium is open to the sky) ----
+  // Inset a dark ellipse to suggest the open bowl interior
+  const openHole = nonShadow(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(1, 1, 0.04, 48, 1),
+      mat(0x05080d, {
+        roughness: 0.9,
+        emissive: 0x000000,
+        emissiveIntensity: 0,
+      })
+    )
+  );
+  openHole.scale.set(saucerW / 2 - 0.9, 1, saucerD / 2 - 0.9);
+  openHole.position.y = saucerY + saucerH * 0.32 + 1.36 - 0.01;
+  g.add(openHole);
+
+  // ---- Green playing field visible through the open top ----
+  // Sits a bit below the saucer rim, just inside the bowl footprint
+  const field = nonShadow(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(1, 1, 0.04, 32, 1),
+      FIELD_GREEN
+    )
+  );
+  field.scale.set(saucerW / 2 - 1.4, 1, saucerD / 2 - 1.4);
+  field.position.y = saucerY + 0.55;
+  g.add(field);
+
+  // ---- Asymmetric east-side high deck (the renovation made one side
+  //      taller than the other — the famous lopsided silhouette) ----
+  const highDeck = nonShadow(
+    new THREE.Mesh(new THREE.BoxGeometry(saucerW * 0.55, 0.85, 0.6), STEEL)
+  );
+  highDeck.position.set(0, saucerY + 1.62, saucerD / 2 - 0.15);
+  g.add(highDeck);
+
+  // Glass strip on the high deck
+  const highDeckGlass = nonShadow(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(saucerW * 0.55 - 0.2, 0.6, 0.65),
+      GLASS
+    )
+  );
+  highDeckGlass.position.set(0, saucerY + 1.62, saucerD / 2 - 0.15);
+  g.add(highDeckGlass);
+
+  // Roof cap on the high deck
+  const highDeckRoof = nonShadow(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(saucerW * 0.55 + 0.1, 0.1, 0.75),
+      STEEL_DARK
+    )
+  );
+  highDeckRoof.position.set(0, saucerY + 2.1, saucerD / 2 - 0.15);
+  g.add(highDeckRoof);
+
+  // Light masts on the high deck
+  for (const sx of [-2.5, 2.5]) {
+    const mast = nonShadow(
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(0.04, 0.06, 1.2, 6),
+        STEEL_DARK
+      )
+    );
+    mast.position.set(sx, saucerY + 2.7, saucerD / 2 - 0.15);
+    g.add(mast);
+    const light = nonShadow(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(0.32, 0.12, 0.12),
+        mat(0xfff0c0, { emissive: 0xffd680, emissiveIntensity: 0.85 })
+      )
+    );
+    light.position.set(sx, saucerY + 3.3, saucerD / 2 - 0.15);
+    g.add(light);
+  }
 
   return g;
 }
 
-// ---- Chicago Water Tower (1869) — castellated Gothic limestone ----
+// ---- Chicago Water Tower (William W. Boyington, 1869) and its
+//      surrounding "Water Tower Place" plaza. Survived the 1871 fire.
+//      Castellated Gothic Revival limestone with corner turrets, a tall
+//      central tower in stages with lancet windows, an octagonal cupola
+//      and pyramidal cap. Around it: cobblestone plaza, period gas-lamp
+//      posts, landscape trees, and the companion Pumping Station across
+//      the street (same Gothic vocabulary, lower and longer). ----
 function createWaterTower() {
   const g = new THREE.Group();
   const STONE = mat(0xeae3cd, { roughness: 0.78 });
+  const STONE_MID = mat(0xd6caa6, { roughness: 0.8 });
   const STONE_DARK = mat(0xc9c0a4, { roughness: 0.78 });
+  const STONE_SHADOW = mat(0x9a8d6e, { roughness: 0.85 });
+  const SLATE = mat(0x4a4a5a, { roughness: 0.7, metalness: 0.25 });
+  const COBBLE = mat(0x7d736a, { roughness: 0.95 });
+  const GRASS = mat(0x3a6b3a, { roughness: 0.92 });
+  const FOLIAGE = mat(0x2c5236, { roughness: 0.9 });
+  const FOLIAGE_LIGHT = mat(0x4a7a3c, { roughness: 0.9 });
+  const TRUNK = mat(0x4a3a2a, { roughness: 0.95 });
+  const IRON = mat(0x1a1820, { roughness: 0.6, metalness: 0.5 });
+  const LAMP_GLOW = mat(0xfff0c0, {
+    emissive: 0xffd680,
+    emissiveIntensity: 0.9,
+  });
 
-  // Lower courtyard walls — square block
-  const lowerW = nonShadow(new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.0, 2.6), STONE));
-  lowerW.position.y = 0.5;
+  // ===== Plaza around the building =====
+  const plaza = nonShadow(
+    new THREE.Mesh(new THREE.CircleGeometry(5.5, 32), COBBLE)
+  );
+  plaza.rotation.x = -Math.PI / 2;
+  plaza.position.y = 0.01;
+  g.add(plaza);
+
+  // Inner stone ring directly under the tower
+  const innerPlaza = nonShadow(
+    new THREE.Mesh(new THREE.CircleGeometry(2.4, 32), STONE_DARK)
+  );
+  innerPlaza.rotation.x = -Math.PI / 2;
+  innerPlaza.position.y = 0.02;
+  g.add(innerPlaza);
+
+  // Radiating cobble lines (suggest period paver pattern)
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2;
+    const line = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.01, 3.0), STONE_SHADOW)
+    );
+    line.position.set(Math.cos(a) * 4.0, 0.025, Math.sin(a) * 4.0);
+    line.rotation.y = -a + Math.PI / 2;
+    g.add(line);
+  }
+
+  // ===== Tower base — three-step stone podium =====
+  for (let i = 0; i < 3; i++) {
+    const w = 3.0 - i * 0.2;
+    const podium = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(w, 0.1, w), STONE_MID)
+    );
+    podium.position.y = 0.05 + i * 0.08;
+    g.add(podium);
+  }
+  const baseTopY = 0.29;
+
+  // ===== Lower courtyard walls — square block with battered (sloped) base =====
+  const lowerWallH = 1.0;
+  const lowerW = nonShadow(
+    new THREE.Mesh(new THREE.BoxGeometry(2.6, lowerWallH, 2.6), STONE)
+  );
+  lowerW.position.y = baseTopY + lowerWallH / 2;
   g.add(lowerW);
 
-  // Crenellation strip along top of lower walls (alternating notches)
+  // String course (horizontal trim band)
+  const stringCourse = nonShadow(
+    new THREE.Mesh(new THREE.BoxGeometry(2.74, 0.08, 2.74), STONE_MID)
+  );
+  stringCourse.position.y = baseTopY + lowerWallH - 0.04;
+  g.add(stringCourse);
+
+  // Lancet windows on each face of the lower walls
+  for (let face = 0; face < 4; face++) {
+    const ang = (face * Math.PI) / 2;
+    for (const off of [-0.55, 0.55]) {
+      const winFrame = nonShadow(
+        new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.55, 0.06), STONE_DARK)
+      );
+      winFrame.position.set(
+        Math.cos(ang) * 1.32 + Math.sin(ang) * off,
+        baseTopY + 0.5,
+        Math.sin(ang) * 1.32 - Math.cos(ang) * off
+      );
+      winFrame.rotation.y = -ang;
+      g.add(winFrame);
+      // Dark window pane
+      const pane = nonShadow(
+        new THREE.Mesh(
+          new THREE.BoxGeometry(0.14, 0.4, 0.04),
+          mat(0x1a2230, { emissive: 0x081020, emissiveIntensity: 0.3 })
+        )
+      );
+      pane.position.set(
+        Math.cos(ang) * 1.34 + Math.sin(ang) * off,
+        baseTopY + 0.5,
+        Math.sin(ang) * 1.34 - Math.cos(ang) * off
+      );
+      pane.rotation.y = -ang;
+      g.add(pane);
+      // Pointed-arch top (small triangle)
+      const archGeo = new THREE.BufferGeometry();
+      archGeo.setAttribute(
+        "position",
+        new THREE.BufferAttribute(
+          new Float32Array([-0.11, 0, 0, 0.11, 0, 0, 0, 0.12, 0]),
+          3
+        )
+      );
+      archGeo.setIndex([0, 1, 2]);
+      archGeo.computeVertexNormals();
+      const arch = nonShadow(
+        new THREE.Mesh(
+          archGeo,
+          new THREE.MeshStandardMaterial({
+            color: 0xd6caa6,
+            roughness: 0.8,
+            side: THREE.DoubleSide,
+          })
+        )
+      );
+      arch.position.set(
+        Math.cos(ang) * 1.345 + Math.sin(ang) * off,
+        baseTopY + 0.75,
+        Math.sin(ang) * 1.345 - Math.cos(ang) * off
+      );
+      arch.rotation.y = -ang + Math.PI / 2;
+      g.add(arch);
+    }
+  }
+
+  // Crenellation along the top of the lower walls
   for (let face = 0; face < 4; face++) {
     const ang = (face * Math.PI) / 2;
     for (let i = -2; i <= 2; i++) {
       if ((i + face) % 2 === 0) continue;
-      const notch = nonShadow(new THREE.Mesh(
-        new THREE.BoxGeometry(0.22, 0.14, 0.22),
-        STONE
-      ));
+      const notch = nonShadow(
+        new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.18, 0.22), STONE)
+      );
       const x = Math.cos(ang) * 1.18 + Math.sin(ang) * (i * 0.4);
       const z = Math.sin(ang) * 1.18 - Math.cos(ang) * (i * 0.4);
-      notch.position.set(x, 1.08, z);
+      notch.position.set(x, baseTopY + lowerWallH + 0.09, z);
       g.add(notch);
     }
   }
 
-  // Four corner turrets
+  // ===== Four corner turrets with conical "witch-hat" roofs =====
   for (const x of [-1.05, 1.05]) {
     for (const z of [-1.05, 1.05]) {
-      const turret = nonShadow(new THREE.Mesh(
-        new THREE.CylinderGeometry(0.26, 0.28, 1.6, 8),
-        STONE
-      ));
-      turret.position.set(x, 0.8, z);
+      // Corbel ring (decorative ring where turret meets wall)
+      const corbel = nonShadow(
+        new THREE.Mesh(
+          new THREE.CylinderGeometry(0.32, 0.3, 0.08, 8),
+          STONE_MID
+        )
+      );
+      corbel.position.set(x, baseTopY + 0.05, z);
+      g.add(corbel);
+
+      // Turret shaft
+      const turret = nonShadow(
+        new THREE.Mesh(
+          new THREE.CylinderGeometry(0.26, 0.28, 1.7, 8),
+          STONE
+        )
+      );
+      turret.position.set(x, baseTopY + 0.85, z);
       g.add(turret);
 
-      const turretRoof = nonShadow(new THREE.Mesh(
-        new THREE.ConeGeometry(0.32, 0.4, 8),
-        STONE_DARK
-      ));
-      turretRoof.position.set(x, 1.8, z);
+      // Small lancet window on each turret (facing outward)
+      const tw = nonShadow(
+        new THREE.Mesh(
+          new THREE.BoxGeometry(0.08, 0.3, 0.04),
+          mat(0x1a2230, { emissive: 0x081020, emissiveIntensity: 0.3 })
+        )
+      );
+      const outAng = Math.atan2(z, x);
+      tw.position.set(
+        x + Math.cos(outAng) * 0.25,
+        baseTopY + 1.05,
+        z + Math.sin(outAng) * 0.25
+      );
+      tw.rotation.y = outAng + Math.PI / 2;
+      g.add(tw);
+
+      // Corbel ring at top of turret before the roof
+      const topRing = nonShadow(
+        new THREE.Mesh(
+          new THREE.CylinderGeometry(0.3, 0.27, 0.08, 8),
+          STONE_MID
+        )
+      );
+      topRing.position.set(x, baseTopY + 1.72, z);
+      g.add(topRing);
+
+      // Conical witch-hat roof
+      const turretRoof = nonShadow(
+        new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.5, 8), SLATE)
+      );
+      turretRoof.position.set(x, baseTopY + 2.0, z);
       g.add(turretRoof);
+
+      // Finial on top of turret
+      const finial = nonShadow(
+        new THREE.Mesh(
+          new THREE.CylinderGeometry(0.015, 0.025, 0.18, 6),
+          IRON
+        )
+      );
+      finial.position.set(x, baseTopY + 2.34, z);
+      g.add(finial);
     }
   }
 
-  // Central tower (square, taller)
-  const central = nonShadow(new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.2, 1.2), STONE));
-  central.position.y = 2.1;
-  g.add(central);
+  // ===== Central tower — three stages stacked vertically =====
+  // Stage 1: lowest, slightly wider
+  const stage1H = 0.95;
+  const stage1 = nonShadow(
+    new THREE.Mesh(new THREE.BoxGeometry(1.25, stage1H, 1.25), STONE)
+  );
+  stage1.position.y = baseTopY + lowerWallH + 0.18 + stage1H / 2;
+  g.add(stage1);
 
-  // Setback ring at the top of central tower
-  const setback = nonShadow(new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.18, 1.4), STONE_DARK));
-  setback.position.y = 3.29;
+  // String course between stages 1 and 2
+  const sc1 = nonShadow(
+    new THREE.Mesh(new THREE.BoxGeometry(1.34, 0.08, 1.34), STONE_MID)
+  );
+  sc1.position.y = baseTopY + lowerWallH + 0.18 + stage1H;
+  g.add(sc1);
+
+  // Lancet windows on each face of stage 1
+  for (let face = 0; face < 4; face++) {
+    const ang = (face * Math.PI) / 2;
+    const winFrame = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 0.06), STONE_DARK)
+    );
+    winFrame.position.set(
+      Math.cos(ang) * 0.64,
+      baseTopY + lowerWallH + 0.18 + stage1H / 2,
+      Math.sin(ang) * 0.64
+    );
+    winFrame.rotation.y = -ang;
+    g.add(winFrame);
+    const pane = nonShadow(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(0.13, 0.38, 0.04),
+        mat(0x1a2230, { emissive: 0x081020, emissiveIntensity: 0.35 })
+      )
+    );
+    pane.position.set(
+      Math.cos(ang) * 0.65,
+      baseTopY + lowerWallH + 0.18 + stage1H / 2,
+      Math.sin(ang) * 0.65
+    );
+    pane.rotation.y = -ang;
+    g.add(pane);
+  }
+
+  // Stage 2: middle
+  const stage2H = 0.85;
+  const stage2Y = baseTopY + lowerWallH + 0.18 + stage1H + 0.08;
+  const stage2 = nonShadow(
+    new THREE.Mesh(new THREE.BoxGeometry(1.15, stage2H, 1.15), STONE)
+  );
+  stage2.position.y = stage2Y + stage2H / 2;
+  g.add(stage2);
+
+  // Vertical buttress strips at the corners of stage 2
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      const butt = nonShadow(
+        new THREE.Mesh(
+          new THREE.BoxGeometry(0.1, stage2H, 0.1),
+          STONE_MID
+        )
+      );
+      butt.position.set(sx * 0.55, stage2Y + stage2H / 2, sz * 0.55);
+      g.add(butt);
+    }
+  }
+
+  // Lancet windows on each face of stage 2
+  for (let face = 0; face < 4; face++) {
+    const ang = (face * Math.PI) / 2;
+    const winFrame = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.45, 0.05), STONE_DARK)
+    );
+    winFrame.position.set(
+      Math.cos(ang) * 0.59,
+      stage2Y + stage2H / 2,
+      Math.sin(ang) * 0.59
+    );
+    winFrame.rotation.y = -ang;
+    g.add(winFrame);
+    const pane = nonShadow(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(0.11, 0.34, 0.04),
+        mat(0x1a2230, { emissive: 0x081020, emissiveIntensity: 0.4 })
+      )
+    );
+    pane.position.set(
+      Math.cos(ang) * 0.6,
+      stage2Y + stage2H / 2,
+      Math.sin(ang) * 0.6
+    );
+    pane.rotation.y = -ang;
+    g.add(pane);
+  }
+
+  // Setback string course between stage 2 and the upper drum
+  const setback = nonShadow(
+    new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.16, 1.3), STONE_MID)
+  );
+  setback.position.y = stage2Y + stage2H + 0.08;
   g.add(setback);
 
-  // Octagonal upper drum
-  const drum = nonShadow(new THREE.Mesh(
-    new THREE.CylinderGeometry(0.5, 0.55, 0.5, 8),
-    STONE
-  ));
-  drum.position.y = 3.65;
+  // ===== Octagonal cupola (upper drum) with lancet openings =====
+  const drumY = stage2Y + stage2H + 0.22;
+  const drum = nonShadow(
+    new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.55, 0.55, 8), STONE)
+  );
+  drum.position.y = drumY;
   g.add(drum);
 
-  // Pyramidal cap on the upper drum
-  const cap = nonShadow(new THREE.Mesh(
-    new THREE.ConeGeometry(0.55, 0.7, 8),
-    STONE_DARK
-  ));
-  cap.position.y = 4.25;
+  // Lancet openings around the octagon
+  for (let i = 0; i < 8; i++) {
+    const ang = (i / 8) * Math.PI * 2;
+    const opening = nonShadow(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(0.12, 0.36, 0.04),
+        mat(0x1a2230, { emissive: 0x141a28, emissiveIntensity: 0.5 })
+      )
+    );
+    opening.position.set(Math.cos(ang) * 0.48, drumY, Math.sin(ang) * 0.48);
+    opening.rotation.y = -ang;
+    g.add(opening);
+  }
+
+  // ===== Pyramidal cap =====
+  const cap = nonShadow(
+    new THREE.Mesh(new THREE.ConeGeometry(0.55, 0.78, 8), SLATE)
+  );
+  cap.position.y = drumY + 0.27 + 0.39;
   g.add(cap);
 
-  // Final cross/pinnacle
-  const pin = nonShadow(new THREE.Mesh(
-    new THREE.CylinderGeometry(0.025, 0.04, 0.6, 6),
-    mat(0x6a8090, { metalness: 0.6 })
-  ));
-  pin.position.y = 4.9;
-  g.add(pin);
+  // Iron finial / pinnacle with cross-bar
+  const finialBase = nonShadow(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(0.025, 0.04, 0.5, 6),
+      IRON
+    )
+  );
+  finialBase.position.y = drumY + 0.27 + 0.78 + 0.25;
+  g.add(finialBase);
+
+  const finialBall = nonShadow(
+    new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), IRON)
+  );
+  finialBall.position.y = drumY + 0.27 + 0.78 + 0.5;
+  g.add(finialBall);
+
+  const finialTop = nonShadow(
+    new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.18, 6), IRON)
+  );
+  finialTop.position.y = drumY + 0.27 + 0.78 + 0.65;
+  g.add(finialTop);
+
+  // ===== Period Victorian gas-lamp posts around the plaza =====
+  function makeLampPost(x, z) {
+    const post = nonShadow(
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(0.04, 0.05, 1.3, 8),
+        IRON
+      )
+    );
+    post.position.set(x, 0.66, z);
+    g.add(post);
+
+    // Decorative collar
+    const collar = nonShadow(
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(0.07, 0.07, 0.06, 8),
+        IRON
+      )
+    );
+    collar.position.set(x, 1.32, z);
+    g.add(collar);
+
+    // Lantern housing
+    const lantern = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.22, 0.16), IRON)
+    );
+    lantern.position.set(x, 1.45, z);
+    g.add(lantern);
+
+    // Lit glass panes
+    const glow = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.18, 0.13), LAMP_GLOW)
+    );
+    glow.position.set(x, 1.45, z);
+    g.add(glow);
+
+    // Lantern top finial
+    const top = nonShadow(
+      new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.1, 6), IRON)
+    );
+    top.position.set(x, 1.62, z);
+    g.add(top);
+  }
+  for (let i = 0; i < 8; i++) {
+    const ang = (i / 8) * Math.PI * 2 + Math.PI / 8;
+    makeLampPost(Math.cos(ang) * 3.6, Math.sin(ang) * 3.6);
+  }
+
+  // ===== Landscape trees around the plaza =====
+  function makeTree(x, z, h, foliage) {
+    const trunk = nonShadow(
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(0.07, 0.09, h * 0.45, 6),
+        TRUNK
+      )
+    );
+    trunk.position.set(x, h * 0.225, z);
+    g.add(trunk);
+    // Crown (two stacked spheres for fuller foliage)
+    const crown1 = nonShadow(
+      new THREE.Mesh(new THREE.SphereGeometry(h * 0.4, 10, 8), foliage)
+    );
+    crown1.position.set(x, h * 0.65, z);
+    crown1.scale.y = 0.85;
+    g.add(crown1);
+    const crown2 = nonShadow(
+      new THREE.Mesh(new THREE.SphereGeometry(h * 0.32, 10, 8), foliage)
+    );
+    crown2.position.set(x + 0.05, h * 0.85, z + 0.04);
+    g.add(crown2);
+  }
+  // Ring of trees
+  const treeSpots = [
+    [-4.2, -3.4, 1.6, FOLIAGE],
+    [4.0, -3.6, 1.4, FOLIAGE_LIGHT],
+    [-4.4, 3.2, 1.5, FOLIAGE_LIGHT],
+    [4.3, 3.0, 1.7, FOLIAGE],
+    [0, -4.6, 1.5, FOLIAGE],
+    [-2.6, -4.4, 1.3, FOLIAGE_LIGHT],
+    [2.5, -4.3, 1.4, FOLIAGE],
+  ];
+  for (const [x, z, h, f] of treeSpots) {
+    makeTree(x, z, h, f);
+  }
+
+  // ===== Grass borders (small grass patches between cobble and trees) =====
+  for (const [x, z, r] of [
+    [-4.2, -3.4, 0.8],
+    [4.0, -3.6, 0.7],
+    [-4.4, 3.2, 0.7],
+    [4.3, 3.0, 0.8],
+    [0, -4.6, 0.7],
+  ]) {
+    const patch = nonShadow(
+      new THREE.Mesh(new THREE.CircleGeometry(r, 16), GRASS)
+    );
+    patch.rotation.x = -Math.PI / 2;
+    patch.position.set(x, 0.015, z);
+    g.add(patch);
+  }
+
+  // ===== Pumping Station (companion building across the "street") =====
+  // Same Gothic vocabulary, lower and longer. Sits a bit south of the
+  // tower on the plaza.
+  const pumpG = new THREE.Group();
+  const pumpW = 3.6;
+  const pumpD = 1.6;
+  const pumpH = 1.4;
+
+  // Main body
+  const pumpBody = nonShadow(
+    new THREE.Mesh(new THREE.BoxGeometry(pumpW, pumpH, pumpD), STONE)
+  );
+  pumpBody.position.y = pumpH / 2;
+  pumpG.add(pumpBody);
+
+  // Stone trim base
+  const pumpBase = nonShadow(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(pumpW + 0.12, 0.1, pumpD + 0.12),
+      STONE_MID
+    )
+  );
+  pumpBase.position.y = 0.05;
+  pumpG.add(pumpBase);
+
+  // String course
+  const pumpString = nonShadow(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(pumpW + 0.06, 0.06, pumpD + 0.06),
+      STONE_MID
+    )
+  );
+  pumpString.position.y = pumpH - 0.05;
+  pumpG.add(pumpString);
+
+  // Row of lancet windows on the long front
+  for (let i = -2; i <= 2; i++) {
+    const winFrame = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.7, 0.06), STONE_DARK)
+    );
+    winFrame.position.set(i * 0.65, pumpH / 2 + 0.05, pumpD / 2 + 0.005);
+    pumpG.add(winFrame);
+    const pane = nonShadow(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(0.15, 0.55, 0.04),
+        mat(0x1a2230, { emissive: 0x081020, emissiveIntensity: 0.4 })
+      )
+    );
+    pane.position.set(i * 0.65, pumpH / 2 + 0.05, pumpD / 2 + 0.02);
+    pumpG.add(pane);
+    // Pointed arch on top of each window
+    const archGeo = new THREE.BufferGeometry();
+    archGeo.setAttribute(
+      "position",
+      new THREE.BufferAttribute(
+        new Float32Array([-0.11, 0, 0, 0.11, 0, 0, 0, 0.14, 0]),
+        3
+      )
+    );
+    archGeo.setIndex([0, 1, 2]);
+    archGeo.computeVertexNormals();
+    const arch = nonShadow(
+      new THREE.Mesh(
+        archGeo,
+        new THREE.MeshStandardMaterial({
+          color: 0xd6caa6,
+          roughness: 0.8,
+          side: THREE.DoubleSide,
+        })
+      )
+    );
+    arch.position.set(i * 0.65, pumpH / 2 + 0.42, pumpD / 2 + 0.025);
+    pumpG.add(arch);
+  }
+
+  // Two small corner turrets at each end of the pumping station
+  for (const sx of [-1, 1]) {
+    const cTurret = nonShadow(
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(0.18, 0.2, pumpH + 0.3, 8),
+        STONE
+      )
+    );
+    cTurret.position.set(sx * (pumpW / 2 + 0.08), (pumpH + 0.3) / 2, 0);
+    pumpG.add(cTurret);
+    const cRoof = nonShadow(
+      new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.35, 8), SLATE)
+    );
+    cRoof.position.set(sx * (pumpW / 2 + 0.08), pumpH + 0.3 + 0.175, 0);
+    pumpG.add(cRoof);
+  }
+
+  // Central entrance with small gable
+  const entrance = nonShadow(
+    new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.85, 0.18), STONE_DARK)
+  );
+  entrance.position.set(0, 0.45, pumpD / 2 + 0.09);
+  pumpG.add(entrance);
+  const door = nonShadow(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(0.45, 0.7, 0.06),
+      mat(0x4a3025, { roughness: 0.85 })
+    )
+  );
+  door.position.set(0, 0.4, pumpD / 2 + 0.19);
+  pumpG.add(door);
+
+  // Pitched slate gable roof (triangular prism extruded along the long axis)
+  const roofShape = new THREE.Shape();
+  roofShape.moveTo(-pumpW / 2 - 0.05, 0);
+  roofShape.lineTo(pumpW / 2 + 0.05, 0);
+  roofShape.lineTo(0, 0.55);
+  roofShape.closePath();
+  const roofGeo = new THREE.ExtrudeGeometry(roofShape, {
+    depth: pumpD + 0.2,
+    bevelEnabled: false,
+  });
+  roofGeo.translate(0, 0, -(pumpD + 0.2) / 2);
+  const pumpRoof = nonShadow(new THREE.Mesh(roofGeo, SLATE));
+  pumpRoof.position.set(0, pumpH, 0);
+  pumpG.add(pumpRoof);
+
+  // Position the pumping station across from the tower (south-ish)
+  pumpG.position.set(0, 0, 4.0);
+  pumpG.rotation.y = Math.PI;
+  g.add(pumpG);
 
   return g;
 }
