@@ -1182,70 +1182,425 @@ export function createCTATrack() {
   return g;
 }
 
-// ---- Field Museum — Beaux-Arts marble, columned facade, pediment ----
+// ---- Field Museum — Beaux-Arts neoclassical with three-bay facade.
+//      Anatomy: stepped base, recessed central portico with Ionic
+//      columns standing forward of a shadowed entrance wall and bronze
+//      doors, full entablature (architrave + frieze with triglyphs +
+//      projecting cornice), triangular pediment with relief sculpture
+//      and rake trim, acroterion ornaments at apex and corners, side
+//      wings with pilasters and windows, smaller secondary pediments
+//      over the wings, attic parapet with corner urns. ----
 function createFieldMuseum() {
   const g = new THREE.Group();
-  const MARBLE = mat(0xeae3cd, { roughness: 0.7 });
-  const CREAM_DARK = mat(0xd9d0b1, { roughness: 0.7 });
+  const MARBLE = mat(0xeae3cd, { roughness: 0.68 });
+  const MARBLE_MID = mat(0xd9d0b1, { roughness: 0.72 });
+  const MARBLE_DARK = mat(0xc9c0a4, { roughness: 0.75 });
+  const SHADOW = mat(0x6a6450, { roughness: 0.88 });
+  const WINDOW_DARK = mat(0x2a3548, {
+    emissive: 0x0a1422,
+    emissiveIntensity: 0.35,
+  });
+  const BRONZE = mat(0x6a5a32, { roughness: 0.55, metalness: 0.45 });
 
-  // Long horizontal Beaux-Arts proportions (real ratio ~3:1)
-  const body = nonShadow(new THREE.Mesh(new THREE.BoxGeometry(11, 3.2, 5), MARBLE));
-  body.position.y = 1.6;
+  // Building dimensions — long horizontal Beaux-Arts (real ratio ~3:1)
+  const bodyW = 12.5;
+  const bodyD = 4.8;
+  const bodyH = 3.0;
+  const porticoW = 5.4;
+  const porticoColH = 2.3;
+  const porticoFloorD = 1.1; // how far the portico floor projects forward
+
+  // ===== Stepped base — three risers wider as they descend =====
+  const baseStartY = 0;
+  let baseTop = baseStartY;
+  for (let i = 0; i < 3; i++) {
+    const tier = 2 - i; // 2=bottom step, 0=top step
+    const tierW = bodyW + 0.5 + tier * 0.5;
+    const tierD = bodyD + 0.5 + tier * 0.5;
+    const tierH = 0.13;
+    const step = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(tierW, tierH, tierD), MARBLE_MID)
+    );
+    step.position.set(0, baseStartY + tierH / 2 + (2 - tier) * tierH * 0.9, 0);
+    g.add(step);
+    if (tier === 0) baseTop = baseStartY + (2 - tier + 1) * tierH * 0.9;
+  }
+
+  // ===== Main building body =====
+  const body = nonShadow(
+    new THREE.Mesh(new THREE.BoxGeometry(bodyW, bodyH, bodyD), MARBLE)
+  );
+  body.position.set(0, baseTop + bodyH / 2, 0);
   g.add(body);
 
-  // Stepped base course
-  const step = nonShadow(new THREE.Mesh(new THREE.BoxGeometry(11.6, 0.2, 5.6), CREAM_DARK));
-  step.position.y = 0.1;
-  g.add(step);
+  // ===== Recessed central portico =====
+  // Projecting portico floor
+  const porticoFloor = nonShadow(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(porticoW + 0.4, 0.16, porticoFloorD),
+      MARBLE_MID
+    )
+  );
+  porticoFloor.position.set(
+    0,
+    baseTop - 0.08,
+    bodyD / 2 + porticoFloorD / 2
+  );
+  g.add(porticoFloor);
 
-  // Front portico (columns + entablature)
-  const colonH = 2.2;
-  for (let i = 0; i < 8; i++) {
-    const col = nonShadow(new THREE.Mesh(
-      new THREE.CylinderGeometry(0.16, 0.16, colonH, 12),
-      mat(0xf4eed8, { roughness: 0.65 })
-    ));
-    col.position.set(-2.45 + i * 0.7, 1.3, 2.55);
-    g.add(col);
+  // Shadowed wall recessed behind the columns (entrance vestibule)
+  const entranceWall = nonShadow(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(porticoW - 0.4, porticoColH + 0.1, 0.12),
+      SHADOW
+    )
+  );
+  entranceWall.position.set(0, baseTop + (porticoColH + 0.1) / 2, bodyD / 2 - 0.06);
+  g.add(entranceWall);
+
+  // Bronze double doors deep in the entrance shadow
+  for (const dx of [-0.55, 0.55]) {
+    const door = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(0.85, 1.55, 0.06), BRONZE)
+    );
+    door.position.set(dx, baseTop + 0.78, bodyD / 2 + 0.01);
+    g.add(door);
+    // Door panels (vertical detail)
+    const panel = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(0.03, 1.4, 0.02), MARBLE_DARK)
+    );
+    panel.position.set(dx, baseTop + 0.78, bodyD / 2 + 0.045);
+    g.add(panel);
   }
-  // Architrave
-  const arch = nonShadow(new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.45, 0.55), CREAM_DARK));
-  arch.position.set(0, 2.62, 2.6);
-  g.add(arch);
 
-  // Triangular pediment
+  // ===== Ionic columns on the portico — Attic base + shaft + capital =====
+  const colCount = 8;
+  const colSpacing = (porticoW - 0.6) / (colCount - 1);
+  const colR = 0.17;
+  const colZ = bodyD / 2 + porticoFloorD - 0.25;
+
+  for (let i = 0; i < colCount; i++) {
+    const colX = -porticoW / 2 + 0.3 + i * colSpacing;
+
+    // Attic base (torus + scotia profile compressed into a wide drum)
+    const colBase = nonShadow(
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(colR * 1.25, colR * 1.3, 0.14, 14),
+        MARBLE_MID
+      )
+    );
+    colBase.position.set(colX, baseTop + 0.07, colZ);
+    g.add(colBase);
+
+    // Fluted shaft (12-segment cylinder reads as fluting at distance)
+    const shaft = nonShadow(
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(colR * 0.95, colR, porticoColH - 0.32, 12),
+        MARBLE
+      )
+    );
+    shaft.position.set(colX, baseTop + 0.14 + (porticoColH - 0.32) / 2, colZ);
+    g.add(shaft);
+
+    // Ionic capital — wide rectangular abacus
+    const capital = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.14, 0.46), MARBLE)
+    );
+    capital.position.set(colX, baseTop + porticoColH - 0.04, colZ);
+    g.add(capital);
+
+    // Volute scrolls (small ellipsoids on each side of the capital)
+    for (const sx of [-1, 1]) {
+      const volute = nonShadow(
+        new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8), MARBLE)
+      );
+      volute.position.set(colX + sx * 0.18, baseTop + porticoColH - 0.08, colZ);
+      volute.scale.set(1.1, 0.65, 1.1);
+      g.add(volute);
+    }
+  }
+
+  // ===== Entablature: architrave + frieze with triglyphs + cornice =====
+  const entabY = baseTop + porticoColH + 0.05;
+
+  // Architrave (lower smooth band)
+  const architrave = nonShadow(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(porticoW + 0.55, 0.2, 0.8),
+      MARBLE_MID
+    )
+  );
+  architrave.position.set(0, entabY + 0.1, bodyD / 2 + 0.32);
+  g.add(architrave);
+
+  // Frieze (middle decorated band)
+  const frieze = nonShadow(
+    new THREE.Mesh(new THREE.BoxGeometry(porticoW + 0.55, 0.3, 0.74), MARBLE)
+  );
+  frieze.position.set(0, entabY + 0.35, bodyD / 2 + 0.29);
+  g.add(frieze);
+
+  // Triglyphs / vertical fluting on the frieze
+  for (let i = -3; i <= 3; i++) {
+    const trig = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.28, 0.03), MARBLE_DARK)
+    );
+    trig.position.set(i * 0.55, entabY + 0.35, bodyD / 2 + 0.67);
+    g.add(trig);
+  }
+
+  // Cornice (top projecting band — overhangs slightly)
+  const cornicePortico = nonShadow(
+    new THREE.Mesh(new THREE.BoxGeometry(porticoW + 0.7, 0.18, 0.9), MARBLE_MID)
+  );
+  cornicePortico.position.set(0, entabY + 0.6, bodyD / 2 + 0.36);
+  g.add(cornicePortico);
+
+  // ===== Triangular pediment over the portico =====
+  const pedW = porticoW + 0.7;
+  const pedH = 1.15;
   const pedGeo = new THREE.BufferGeometry();
   pedGeo.setAttribute(
     "position",
     new THREE.BufferAttribute(
-      new Float32Array([-3.2, 0, 0, 3.2, 0, 0, 0, 1.1, 0]),
+      new Float32Array([-pedW / 2, 0, 0, pedW / 2, 0, 0, 0, pedH, 0]),
       3
     )
   );
   pedGeo.setIndex([0, 1, 2]);
   pedGeo.computeVertexNormals();
-  const ped = nonShadow(new THREE.Mesh(
-    pedGeo,
-    new THREE.MeshStandardMaterial({
-      color: 0xeae3cd,
-      roughness: 0.7,
-      side: THREE.DoubleSide,
-    })
-  ));
-  ped.position.set(0, 2.85, 2.6);
+  const ped = nonShadow(
+    new THREE.Mesh(
+      pedGeo,
+      new THREE.MeshStandardMaterial({
+        color: 0xeae3cd,
+        roughness: 0.7,
+        side: THREE.DoubleSide,
+      })
+    )
+  );
+  ped.position.set(0, entabY + 0.69, bodyD / 2 + 0.6);
   g.add(ped);
 
-  // Side wings — slightly recessed
-  for (const side of [-1, 1]) {
-    const wing = nonShadow(new THREE.Mesh(new THREE.BoxGeometry(0.35, 2.8, 4.6), CREAM_DARK));
-    wing.position.set(side * 5.85, 1.4, 0);
-    g.add(wing);
+  // Pediment sculpture relief — three figures in the tympanum
+  for (let i = -1; i <= 1; i++) {
+    const fig = nonShadow(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(0.42, 0.48 - Math.abs(i) * 0.1, 0.09),
+        MARBLE_MID
+      )
+    );
+    fig.position.set(i * 1.25, entabY + 0.91, bodyD / 2 + 0.65);
+    g.add(fig);
+    // Round head bump
+    const head = nonShadow(
+      new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), MARBLE_MID)
+    );
+    head.position.set(i * 1.25, entabY + 1.17 - Math.abs(i) * 0.1, bodyD / 2 + 0.66);
+    g.add(head);
   }
 
-  // Cornice line
-  const cornice = nonShadow(new THREE.Mesh(new THREE.BoxGeometry(11.4, 0.25, 5.2), CREAM_DARK));
-  cornice.position.y = 3.15;
-  g.add(cornice);
+  // Pediment rake trim — angled cornice along the slopes
+  for (const dir of [-1, 1]) {
+    const slopeLen = Math.sqrt((pedW / 2) ** 2 + pedH * pedH);
+    const ang = Math.atan2(pedH, pedW / 2);
+    const rake = nonShadow(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(0.06, slopeLen, 0.22),
+        MARBLE_MID
+      )
+    );
+    rake.position.set(
+      dir * pedW / 4,
+      entabY + 0.69 + pedH / 2,
+      bodyD / 2 + 0.66
+    );
+    rake.rotation.z = -dir * (Math.PI / 2 - ang);
+    g.add(rake);
+  }
+
+  // Acroterion at the apex
+  const apex = nonShadow(
+    new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.34, 8), MARBLE)
+  );
+  apex.position.set(0, entabY + 0.69 + pedH + 0.17, bodyD / 2 + 0.65);
+  g.add(apex);
+
+  // Corner acroteria (small urns at pediment corners)
+  for (const sx of [-1, 1]) {
+    const corner = nonShadow(
+      new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.24, 6), MARBLE)
+    );
+    corner.position.set(
+      sx * (pedW / 2 - 0.05),
+      entabY + 0.69 + 0.12,
+      bodyD / 2 + 0.65
+    );
+    g.add(corner);
+  }
+
+  // ===== Side wings — pilasters with windows between, on both front and side facades =====
+  // Front facade pilasters (flanking the central portico)
+  for (const side of [-1, 1]) {
+    const wingStartX = side * (porticoW / 2 + 0.35);
+    const wingEndX = side * bodyW / 2;
+    const wingSpan = Math.abs(wingEndX - wingStartX);
+    const winCount = 5;
+
+    for (let i = 0; i <= winCount; i++) {
+      const t = i / winCount;
+      const winX = wingStartX + (wingEndX - wingStartX) * t;
+
+      // Pilaster (flat column attached to the wall)
+      const pilaster = nonShadow(
+        new THREE.Mesh(
+          new THREE.BoxGeometry(0.13, porticoColH + 0.5, 0.08),
+          MARBLE_MID
+        )
+      );
+      pilaster.position.set(
+        winX,
+        baseTop + (porticoColH + 0.5) / 2,
+        bodyD / 2 + 0.04
+      );
+      g.add(pilaster);
+
+      // Pilaster capital (small square block on top)
+      const pilCap = nonShadow(
+        new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.08, 0.1), MARBLE)
+      );
+      pilCap.position.set(winX, baseTop + porticoColH + 0.46, bodyD / 2 + 0.05);
+      g.add(pilCap);
+
+      // Window between this pilaster and the next (skip the last)
+      if (i < winCount) {
+        const nextX = wingStartX + (wingEndX - wingStartX) * ((i + 1) / winCount);
+        const winCenterX = (winX + nextX) / 2;
+        const win = nonShadow(
+          new THREE.Mesh(new THREE.BoxGeometry(0.55, 1.4, 0.08), WINDOW_DARK)
+        );
+        win.position.set(winCenterX, baseTop + 1.35, bodyD / 2 + 0.045);
+        g.add(win);
+        // Window stone frame top
+        const winLintel = nonShadow(
+          new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.12, 0.06), MARBLE_MID)
+        );
+        winLintel.position.set(winCenterX, baseTop + 2.1, bodyD / 2 + 0.05);
+        g.add(winLintel);
+      }
+    }
+  }
+
+  // Side facade pilasters + windows (east and west faces of the building)
+  for (const sideSign of [-1, 1]) {
+    const sideX = sideSign * (bodyW / 2 + 0.04);
+    const sideCount = 6;
+    for (let i = 0; i <= sideCount; i++) {
+      const t = i / sideCount;
+      const winZ = -bodyD / 2 + bodyD * t;
+
+      const pilaster = nonShadow(
+        new THREE.Mesh(
+          new THREE.BoxGeometry(0.08, porticoColH + 0.5, 0.13),
+          MARBLE_MID
+        )
+      );
+      pilaster.position.set(sideX, baseTop + (porticoColH + 0.5) / 2, winZ);
+      g.add(pilaster);
+
+      if (i < sideCount) {
+        const nextZ = -bodyD / 2 + bodyD * ((i + 1) / sideCount);
+        const winCenterZ = (winZ + nextZ) / 2;
+        const win = nonShadow(
+          new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.3, 0.5), WINDOW_DARK)
+        );
+        win.position.set(sideX + sideSign * 0.005, baseTop + 1.3, winCenterZ);
+        g.add(win);
+      }
+    }
+  }
+
+  // ===== Main cornice band wrapping the entire building =====
+  const corniceMain = nonShadow(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(bodyW + 0.35, 0.2, bodyD + 0.35),
+      MARBLE_MID
+    )
+  );
+  corniceMain.position.set(0, baseTop + bodyH + 0.1, 0);
+  g.add(corniceMain);
+
+  // Decorative dentil row beneath the cornice
+  for (let i = -bodyW / 2; i <= bodyW / 2; i += 0.35) {
+    const dentil = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.08, bodyD + 0.32), MARBLE_DARK)
+    );
+    dentil.position.set(i, baseTop + bodyH + 0.04, 0);
+    g.add(dentil);
+  }
+
+  // ===== Attic parapet (low wall above the main cornice) =====
+  const attic = nonShadow(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(bodyW + 0.1, 0.45, bodyD + 0.1),
+      MARBLE
+    )
+  );
+  attic.position.set(0, baseTop + bodyH + 0.42, 0);
+  g.add(attic);
+
+  // Decorative urns on the attic corners and at intervals
+  for (const x of [-bodyW / 2 + 0.2, -3.5, 3.5, bodyW / 2 - 0.2]) {
+    const urn = nonShadow(
+      new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.14, 0.42, 12), MARBLE)
+    );
+    urn.position.set(x, baseTop + bodyH + 0.85, bodyD / 2 + 0.05);
+    g.add(urn);
+    // Urn lid
+    const lid = nonShadow(
+      new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 6), MARBLE_MID)
+    );
+    lid.position.set(x, baseTop + bodyH + 1.07, bodyD / 2 + 0.05);
+    g.add(lid);
+  }
+
+  // ===== Side-wing pediments (smaller secondary pediments above the wings) =====
+  for (const side of [-1, 1]) {
+    const wpW = 2.4;
+    const wpH = 0.55;
+    const wpGeo = new THREE.BufferGeometry();
+    wpGeo.setAttribute(
+      "position",
+      new THREE.BufferAttribute(
+        new Float32Array([-wpW / 2, 0, 0, wpW / 2, 0, 0, 0, wpH, 0]),
+        3
+      )
+    );
+    wpGeo.setIndex([0, 1, 2]);
+    wpGeo.computeVertexNormals();
+    const wp = nonShadow(
+      new THREE.Mesh(
+        wpGeo,
+        new THREE.MeshStandardMaterial({
+          color: 0xeae3cd,
+          roughness: 0.7,
+          side: THREE.DoubleSide,
+        })
+      )
+    );
+    wp.position.set(side * 4.5, baseTop + bodyH + 0.65, bodyD / 2 + 0.18);
+    g.add(wp);
+    // Small acroterion on wing pediment apex
+    const wpApex = nonShadow(
+      new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.16, 6), MARBLE)
+    );
+    wpApex.position.set(
+      side * 4.5,
+      baseTop + bodyH + 0.65 + wpH + 0.08,
+      bodyD / 2 + 0.18
+    );
+    g.add(wpApex);
+  }
 
   return g;
 }
