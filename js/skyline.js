@@ -2528,6 +2528,534 @@ function createWaterTower() {
   return g;
 }
 
+// ---- Buckingham Fountain (Marcel Loyau / Bennett, Parsons & Frost,
+//      1927) — Rococo wedding-cake fountain in Grant Park, modeled on
+//      the Latona Fountain at Versailles but twice the size. Three
+//      concentric pink Georgia marble basins rising in tiers, 4 pairs
+//      of bronze sea horses (hippocampi) representing Lake Michigan's
+//      bordering states, balustrades around the rim, central spire,
+//      and the iconic 150-ft central water jet. Sits on a cobblestone
+//      plaza ringed with lawn beds. ----
+function createBuckinghamFountain() {
+  const g = new THREE.Group();
+  const MARBLE_PINK = mat(0xe8d4c8, { roughness: 0.62, metalness: 0.05 });
+  const MARBLE_LIGHT = mat(0xf2e0d4, { roughness: 0.62 });
+  const MARBLE_MID = mat(0xd8c1b0, { roughness: 0.7 });
+  const MARBLE_DARK = mat(0xc0a890, { roughness: 0.75 });
+  const BRONZE = mat(0x5a7050, { roughness: 0.55, metalness: 0.55 });
+  const BRONZE_DARK = mat(0x3e5440, { roughness: 0.6, metalness: 0.5 });
+  const WATER = new THREE.MeshStandardMaterial({
+    color: 0x6fb4d8,
+    roughness: 0.15,
+    metalness: 0.3,
+    transparent: true,
+    opacity: 0.65,
+    emissive: 0x2a5070,
+    emissiveIntensity: 0.3,
+  });
+  const WATER_JET = new THREE.MeshStandardMaterial({
+    color: 0xa0d0f0,
+    roughness: 0.1,
+    metalness: 0.1,
+    transparent: true,
+    opacity: 0.6,
+    emissive: 0x6090c0,
+    emissiveIntensity: 0.55,
+  });
+  const COBBLE = mat(0x8a8070, { roughness: 0.95 });
+  const COBBLE_DARK = mat(0x6a6050, { roughness: 0.95 });
+  const GRASS = mat(0x3a6b3a, { roughness: 0.92 });
+  const HEDGE = mat(0x2c5236, { roughness: 0.9 });
+
+  // ===== Surrounding cobble plaza =====
+  const plaza = nonShadow(
+    new THREE.Mesh(new THREE.CircleGeometry(7.5, 64), COBBLE)
+  );
+  plaza.rotation.x = -Math.PI / 2;
+  plaza.position.y = 0.005;
+  g.add(plaza);
+
+  // Radial cobble pattern lines
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2;
+    const line = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.01, 6.5), COBBLE_DARK)
+    );
+    line.position.set(Math.cos(a) * 5.0, 0.015, Math.sin(a) * 5.0);
+    line.rotation.y = -a + Math.PI / 2;
+    g.add(line);
+  }
+
+  // Outer lawn beds with hedge borders
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+    const grassPatch = nonShadow(
+      new THREE.Mesh(new THREE.CircleGeometry(0.9, 24), GRASS)
+    );
+    grassPatch.rotation.x = -Math.PI / 2;
+    grassPatch.position.set(Math.cos(a) * 6.4, 0.025, Math.sin(a) * 6.4);
+    g.add(grassPatch);
+    // Hedge ring around the lawn
+    const hedge = nonShadow(
+      new THREE.Mesh(new THREE.TorusGeometry(0.85, 0.07, 6, 24), HEDGE)
+    );
+    hedge.position.set(Math.cos(a) * 6.4, 0.07, Math.sin(a) * 6.4);
+    hedge.rotation.x = Math.PI / 2;
+    g.add(hedge);
+  }
+
+  // Inner stone band around the fountain itself
+  const innerBand = nonShadow(
+    new THREE.Mesh(new THREE.RingGeometry(4.4, 4.8, 64), MARBLE_DARK)
+  );
+  innerBand.rotation.x = -Math.PI / 2;
+  innerBand.position.y = 0.018;
+  g.add(innerBand);
+
+  // ===== Bottom basin (the biggest, 280 ft in real life) =====
+  const basinR = 4.2;
+  const basinH = 0.4;
+
+  // Wall ring (cylinder shell visually — we render outer + cap)
+  const outerWall = nonShadow(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(basinR, basinR + 0.12, basinH, 64),
+      MARBLE_PINK
+    )
+  );
+  outerWall.position.y = basinH / 2;
+  g.add(outerWall);
+
+  // Top rim ring (where the wall caps off, with the cavity for water)
+  const basinRim = nonShadow(
+    new THREE.Mesh(new THREE.RingGeometry(3.85, basinR, 64), MARBLE_LIGHT)
+  );
+  basinRim.rotation.x = -Math.PI / 2;
+  basinRim.position.y = basinH + 0.003;
+  g.add(basinRim);
+
+  // Water surface in the bottom basin
+  const water1 = nonShadow(
+    new THREE.Mesh(new THREE.CircleGeometry(3.83, 48), WATER)
+  );
+  water1.rotation.x = -Math.PI / 2;
+  water1.position.y = basinH - 0.05;
+  g.add(water1);
+
+  // Balustrade around the rim — alternating column balusters
+  const balusterCount = 32;
+  for (let i = 0; i < balusterCount; i++) {
+    const a = (i / balusterCount) * Math.PI * 2;
+    const x = Math.cos(a) * (basinR + 0.06);
+    const z = Math.sin(a) * (basinR + 0.06);
+
+    // Square base block
+    const balBase = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.05, 0.13), MARBLE_DARK)
+    );
+    balBase.position.set(x, basinH + 0.025, z);
+    balBase.rotation.y = -a;
+    g.add(balBase);
+
+    // Bulbous baluster body (urn-shaped)
+    const balBody = nonShadow(
+      new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), MARBLE_PINK)
+    );
+    balBody.position.set(x, basinH + 0.11, z);
+    balBody.scale.set(1, 1.4, 1);
+    g.add(balBody);
+
+    // Square top block
+    const balTop = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.035, 0.12), MARBLE_DARK)
+    );
+    balTop.position.set(x, basinH + 0.19, z);
+    balTop.rotation.y = -a;
+    g.add(balTop);
+  }
+
+  // Continuous handrail capping the balustrade
+  const handrail = nonShadow(
+    new THREE.Mesh(
+      new THREE.TorusGeometry(basinR + 0.08, 0.03, 6, 64),
+      MARBLE_LIGHT
+    )
+  );
+  handrail.position.y = basinH + 0.22;
+  handrail.rotation.x = Math.PI / 2;
+  g.add(handrail);
+
+  // ===== 4 pairs of bronze sea horses (hippocampi) in the lower basin =====
+  function makeSeaHorse(faceOut) {
+    const sh = new THREE.Group();
+    // Body — torso rearing up
+    const body = nonShadow(
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(0.085, 0.115, 0.42, 8),
+        BRONZE
+      )
+    );
+    body.rotation.z = -0.35;
+    body.position.set(0.03, 0.3, 0);
+    sh.add(body);
+    // Chest plate (bulge at front of body)
+    const chest = nonShadow(
+      new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), BRONZE)
+    );
+    chest.scale.set(1, 0.85, 1);
+    chest.position.set(0.13, 0.36, 0);
+    sh.add(chest);
+    // Forelegs rearing forward
+    for (const sx of [-1, 1]) {
+      const leg = nonShadow(
+        new THREE.Mesh(
+          new THREE.CylinderGeometry(0.022, 0.028, 0.32, 6),
+          BRONZE
+        )
+      );
+      leg.rotation.z = -0.7;
+      leg.position.set(0.21, 0.48, sx * 0.06);
+      sh.add(leg);
+      // Hoof
+      const hoof = nonShadow(
+        new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 5), BRONZE_DARK)
+      );
+      hoof.position.set(0.34, 0.6, sx * 0.06);
+      sh.add(hoof);
+    }
+    // Head
+    const head = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.11, 0.11), BRONZE)
+    );
+    head.position.set(0.22, 0.6, 0);
+    head.rotation.z = -0.25;
+    sh.add(head);
+    // Snout
+    const snout = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.07, 0.08), BRONZE_DARK)
+    );
+    snout.position.set(0.32, 0.55, 0);
+    sh.add(snout);
+    // Mane (spheres along back of head)
+    for (let i = 0; i < 3; i++) {
+      const m = nonShadow(
+        new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 5), BRONZE_DARK)
+      );
+      m.position.set(0.13 - i * 0.05, 0.69 + i * 0.01, 0);
+      sh.add(m);
+    }
+    // Ears
+    for (const sx of [-1, 1]) {
+      const ear = nonShadow(
+        new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.05, 5), BRONZE)
+      );
+      ear.position.set(0.22, 0.69, sx * 0.04);
+      sh.add(ear);
+    }
+    // Fish tail — curls back and down
+    const tail1 = nonShadow(
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(0.08, 0.05, 0.3, 6),
+        BRONZE
+      )
+    );
+    tail1.rotation.z = 0.6;
+    tail1.position.set(-0.15, 0.28, 0);
+    sh.add(tail1);
+    const tail2 = nonShadow(
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(0.05, 0.03, 0.25, 6),
+        BRONZE
+      )
+    );
+    tail2.rotation.z = 1.2;
+    tail2.position.set(-0.3, 0.16, 0);
+    sh.add(tail2);
+    // Tail fluke (fan-shaped end)
+    const flukeShape = new THREE.Shape();
+    flukeShape.moveTo(0, 0);
+    flukeShape.lineTo(0.12, 0.08);
+    flukeShape.lineTo(0.18, 0);
+    flukeShape.lineTo(0.12, -0.08);
+    flukeShape.closePath();
+    const flukeGeo = new THREE.ShapeGeometry(flukeShape);
+    const fluke = nonShadow(
+      new THREE.Mesh(
+        flukeGeo,
+        new THREE.MeshStandardMaterial({
+          color: 0x3e5440,
+          roughness: 0.6,
+          metalness: 0.5,
+          side: THREE.DoubleSide,
+        })
+      )
+    );
+    fluke.position.set(-0.4, 0.1, 0);
+    fluke.rotation.y = Math.PI / 2;
+    sh.add(fluke);
+    // Water spray from the snout
+    const spray = nonShadow(
+      new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.7, 6), WATER_JET)
+    );
+    spray.rotation.z = -1.0;
+    spray.position.set(0.55, 0.85, 0);
+    sh.add(spray);
+    return sh;
+  }
+
+  // Place 4 PAIRS at cardinal positions
+  for (let i = 0; i < 4; i++) {
+    const ang = (i / 4) * Math.PI * 2 + Math.PI / 4;
+    const cx = Math.cos(ang) * (basinR - 0.95);
+    const cz = Math.sin(ang) * (basinR - 0.95);
+    // Two horses in each pair, offset perpendicular to radial direction
+    for (const off of [-0.32, 0.32]) {
+      const sh = makeSeaHorse();
+      const px = cx + Math.cos(ang + Math.PI / 2) * off;
+      const pz = cz + Math.sin(ang + Math.PI / 2) * off;
+      sh.position.set(px, basinH - 0.08, pz);
+      // Face radially OUTWARD
+      sh.rotation.y = -ang;
+      g.add(sh);
+    }
+  }
+
+  // ===== Middle tier basin =====
+  const tier2BaseY = basinH + 0.05;
+  const tier2SupportH = 0.45;
+
+  // Stepped pedestal supporting the middle tier
+  const tier2Pedestal = nonShadow(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(2.65, 2.85, tier2SupportH, 48),
+      MARBLE_LIGHT
+    )
+  );
+  tier2Pedestal.position.y = tier2BaseY + tier2SupportH / 2;
+  g.add(tier2Pedestal);
+
+  // Cornice ring at top of pedestal
+  const tier2Cornice = nonShadow(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(2.85, 2.65, 0.1, 48),
+      MARBLE_MID
+    )
+  );
+  tier2Cornice.position.y = tier2BaseY + tier2SupportH + 0.05;
+  g.add(tier2Cornice);
+
+  // Decorative dentil row around the pedestal
+  for (let i = 0; i < 32; i++) {
+    const a = (i / 32) * Math.PI * 2;
+    const dent = nonShadow(
+      new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.08, 0.18), MARBLE_DARK)
+    );
+    dent.position.set(
+      Math.cos(a) * 2.78,
+      tier2BaseY + tier2SupportH - 0.06,
+      Math.sin(a) * 2.78
+    );
+    dent.rotation.y = -a;
+    g.add(dent);
+  }
+
+  const tier2RimY = tier2BaseY + tier2SupportH + 0.1;
+  const tier2R = 2.4;
+  const tier2H = 0.35;
+
+  const tier2Wall = nonShadow(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(tier2R, tier2R + 0.06, tier2H, 48),
+      MARBLE_PINK
+    )
+  );
+  tier2Wall.position.y = tier2RimY + tier2H / 2;
+  g.add(tier2Wall);
+
+  const tier2Top = nonShadow(
+    new THREE.Mesh(new THREE.RingGeometry(2.1, tier2R, 48), MARBLE_LIGHT)
+  );
+  tier2Top.rotation.x = -Math.PI / 2;
+  tier2Top.position.y = tier2RimY + tier2H + 0.003;
+  g.add(tier2Top);
+
+  const water2 = nonShadow(
+    new THREE.Mesh(new THREE.CircleGeometry(2.08, 32), WATER)
+  );
+  water2.rotation.x = -Math.PI / 2;
+  water2.position.y = tier2RimY + tier2H - 0.05;
+  g.add(water2);
+
+  // Water cascading from tier 2 down to tier 1 (8 spouts)
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const cascade = nonShadow(
+      new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.55, 5), WATER_JET)
+    );
+    cascade.position.set(
+      Math.cos(a) * (tier2R + 0.18),
+      tier2RimY + tier2H * 0.3,
+      Math.sin(a) * (tier2R + 0.18)
+    );
+    cascade.rotation.z = Math.cos(a) * 0.4;
+    cascade.rotation.x = Math.sin(a) * 0.4;
+    g.add(cascade);
+  }
+
+  // ===== Top tier basin (smallest) =====
+  const tier3SupportH = 0.35;
+  const tier3PedY = tier2RimY + tier2H + 0.04;
+
+  const tier3Pedestal = nonShadow(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(1.35, 1.55, tier3SupportH, 32),
+      MARBLE_LIGHT
+    )
+  );
+  tier3Pedestal.position.y = tier3PedY + tier3SupportH / 2;
+  g.add(tier3Pedestal);
+
+  const tier3Cornice = nonShadow(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(1.55, 1.35, 0.08, 32),
+      MARBLE_MID
+    )
+  );
+  tier3Cornice.position.y = tier3PedY + tier3SupportH + 0.04;
+  g.add(tier3Cornice);
+
+  const tier3RimY = tier3PedY + tier3SupportH + 0.08;
+  const tier3R = 1.25;
+  const tier3H = 0.3;
+
+  const tier3Wall = nonShadow(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(tier3R, tier3R + 0.05, tier3H, 32),
+      MARBLE_PINK
+    )
+  );
+  tier3Wall.position.y = tier3RimY + tier3H / 2;
+  g.add(tier3Wall);
+
+  const tier3Top = nonShadow(
+    new THREE.Mesh(new THREE.RingGeometry(1.0, tier3R, 32), MARBLE_LIGHT)
+  );
+  tier3Top.rotation.x = -Math.PI / 2;
+  tier3Top.position.y = tier3RimY + tier3H + 0.003;
+  g.add(tier3Top);
+
+  const water3 = nonShadow(
+    new THREE.Mesh(new THREE.CircleGeometry(0.98, 32), WATER)
+  );
+  water3.rotation.x = -Math.PI / 2;
+  water3.position.y = tier3RimY + tier3H - 0.05;
+  g.add(water3);
+
+  // Water cascading from tier 3 down to tier 2
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const cascade = nonShadow(
+      new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.45, 5), WATER_JET)
+    );
+    cascade.position.set(
+      Math.cos(a) * (tier3R + 0.14),
+      tier3RimY + tier3H * 0.3,
+      Math.sin(a) * (tier3R + 0.14)
+    );
+    cascade.rotation.z = Math.cos(a) * 0.35;
+    cascade.rotation.x = Math.sin(a) * 0.35;
+    g.add(cascade);
+  }
+
+  // ===== Central decorative spire =====
+  const spireBaseY = tier3RimY + tier3H + 0.02;
+
+  const spireCol = nonShadow(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(0.2, 0.26, 0.55, 16),
+      MARBLE_PINK
+    )
+  );
+  spireCol.position.y = spireBaseY + 0.28;
+  g.add(spireCol);
+
+  const spireCap = nonShadow(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(0.12, 0.2, 0.18, 16),
+      MARBLE_MID
+    )
+  );
+  spireCap.position.y = spireBaseY + 0.65;
+  g.add(spireCap);
+
+  const spireTop = nonShadow(
+    new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 8), MARBLE_LIGHT)
+  );
+  spireTop.position.y = spireBaseY + 0.82;
+  g.add(spireTop);
+
+  // ===== THE iconic central water jet (150 ft tall in real life) =====
+  const jetBaseY = spireBaseY + 0.9;
+  const jetH = 5.0;
+
+  // Main jet column (tapering)
+  const jet = nonShadow(
+    new THREE.Mesh(new THREE.ConeGeometry(0.13, jetH, 14), WATER_JET)
+  );
+  jet.position.y = jetBaseY + jetH / 2;
+  g.add(jet);
+
+  // Brighter inner core
+  const jetCore = nonShadow(
+    new THREE.Mesh(
+      new THREE.ConeGeometry(0.06, jetH * 0.9, 10),
+      new THREE.MeshStandardMaterial({
+        color: 0xe0f0ff,
+        emissive: 0xa0c0e0,
+        emissiveIntensity: 0.75,
+        transparent: true,
+        opacity: 0.85,
+      })
+    )
+  );
+  jetCore.position.y = jetBaseY + jetH * 0.45;
+  g.add(jetCore);
+
+  // Plume — multiple smaller jets fanning out near the top
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const plume = nonShadow(
+      new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.85, 6), WATER_JET)
+    );
+    plume.position.set(
+      Math.cos(a) * 0.18,
+      jetBaseY + jetH - 0.4,
+      Math.sin(a) * 0.18
+    );
+    plume.rotation.z = -Math.cos(a) * 0.5;
+    plume.rotation.x = Math.sin(a) * 0.5;
+    g.add(plume);
+  }
+
+  // Mist cloud sphere at the very top
+  const mist = nonShadow(
+    new THREE.Mesh(
+      new THREE.SphereGeometry(0.42, 14, 10),
+      new THREE.MeshStandardMaterial({
+        color: 0xc0e0f0,
+        transparent: true,
+        opacity: 0.35,
+        emissive: 0x80a0c0,
+        emissiveIntensity: 0.45,
+      })
+    )
+  );
+  mist.position.y = jetBaseY + jetH + 0.25;
+  g.add(mist);
+
+  return g;
+}
+
 // ---- Marina City — twin corncob cylindrical towers ----
 function createMarinaCity() {
   const g = new THREE.Group();
@@ -2774,11 +3302,12 @@ export function createLandmarks() {
 
   // ──────────────────────────────────────────────
   // SOUTH SIDE (z>0) — visible behind white's camera; whoever flips
-  // view also sees these. Lighter density so the south side doesn't
-  // crowd the field of play.
+  // view also sees these. Filling the empty left-side gap with
+  // Buckingham Fountain (the Grant Park Rococo wedding-cake fountain).
   // ──────────────────────────────────────────────
-  place(createFieldMuseum(), 6, 22, -2.95);
-  place(createMarinaCity(), -10, 26, 2.6);
+  place(createFieldMuseum(), 8, 22, -2.95);
+  place(createMarinaCity(), 0, 28, 2.6);
+  place(createBuckinghamFountain(), -18, 16, 0);
 
   return g;
 }
