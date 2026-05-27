@@ -1697,74 +1697,191 @@ function createSoldierField() {
   });
   const FIELD_GREEN = mat(0x3c6b32, { roughness: 0.92 });
 
-  // ===== Historic limestone colonnade base (1924) =====
-  // Long thin base — Soldier Field's footprint is much longer than it is
-  // wide. The base reads as the "podium" beneath the 2003 saucer.
+  // ===== Historic Greek-Doric colonnade (1924) =====
+  // The previous version hid the columns inside a tall base block.
+  // Here the colonnade stands OPEN on a low stylobate, with the
+  // recessed stadium body BEHIND it — the way the real colonnade
+  // reads: tall columns standing proud against the sky.
   const baseW = 11;
   const baseD = 5.4;
-  const baseH = 1.5;
-  const base = nonShadow(
-    new THREE.Mesh(new THREE.BoxGeometry(baseW, baseH, baseD), LIMESTONE)
-  );
-  base.position.y = baseH / 2 + 0.1;
-  g.add(base);
 
-  // Stepped plinth under the base
-  const plinth = nonShadow(
-    new THREE.Mesh(new THREE.BoxGeometry(baseW + 0.4, 0.2, baseD + 0.4), LIMESTONE_DARK)
-  );
-  plinth.position.y = 0.1;
-  g.add(plinth);
-
-  // Doric column rows on both long sides
-  for (const side of [-1, 1]) {
-    for (let i = 0; i < 15; i++) {
-      const colX = -5.25 + i * 0.75;
-      // Shaft
-      const shaft = nonShadow(
-        new THREE.Mesh(
-          new THREE.CylinderGeometry(0.13, 0.13, 1.35, 10),
-          CREAM
-        )
-      );
-      shaft.position.set(colX, 0.875, side * (baseD / 2 - 0.2));
-      g.add(shaft);
-      // Capital (simple Doric square block)
-      const cap = nonShadow(
-        new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.1, 0.32), CREAM)
-      );
-      cap.position.set(colX, 1.6, side * (baseD / 2 - 0.2));
-      g.add(cap);
-    }
-  }
-
-  // Entablature on top of the colonnade
-  const entab = nonShadow(
+  // ---- Stylobate (the platform Doric columns rest on) ----
+  const stylobate1 = nonShadow(
     new THREE.Mesh(
-      new THREE.BoxGeometry(baseW + 0.2, 0.32, baseD + 0.2),
-      mat(0xc6b988, { roughness: 0.7 })
-    )
-  );
-  entab.position.y = 1.75;
-  g.add(entab);
-
-  // Cornice projection
-  const cornice = nonShadow(
-    new THREE.Mesh(
-      new THREE.BoxGeometry(baseW + 0.35, 0.12, baseD + 0.35),
+      new THREE.BoxGeometry(baseW + 0.8, 0.18, baseD + 0.8),
       LIMESTONE_DARK
     )
   );
-  cornice.position.y = 1.94;
-  g.add(cornice);
+  stylobate1.position.y = 0.09;
+  g.add(stylobate1);
+
+  const stylobate2 = nonShadow(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(baseW + 0.45, 0.12, baseD + 0.45),
+      LIMESTONE
+    )
+  );
+  stylobate2.position.y = 0.18 + 0.06;
+  g.add(stylobate2);
+
+  const stylobate3 = nonShadow(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(baseW + 0.15, 0.08, baseD + 0.15),
+      mat(0xe2d5b0, { roughness: 0.78 })
+    )
+  );
+  stylobate3.position.y = 0.18 + 0.12 + 0.04;
+  g.add(stylobate3);
+
+  const stylobateTopY = 0.18 + 0.12 + 0.08; // = 0.38
+
+  // ---- Recessed inner stadium body BEHIND the colonnade ----
+  // Sits between the two column rows; lower than the columns so the
+  // colonnade silhouette stands above it.
+  const innerW = baseW - 0.4;
+  const innerD = baseD - 1.7;
+  const innerH = 1.5;
+  const innerBody = nonShadow(
+    new THREE.Mesh(new THREE.BoxGeometry(innerW, innerH, innerD), LIMESTONE_DARK)
+  );
+  innerBody.position.y = stylobateTopY + innerH / 2;
+  g.add(innerBody);
+
+  // Suggest seating-bowl shadow band on the inner body
+  const seatBand = nonShadow(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(innerW - 0.05, 0.4, innerD - 0.05),
+      mat(0x4a4a5a, {
+        roughness: 0.6,
+        emissive: 0x0a0a14,
+        emissiveIntensity: 0.3,
+      })
+    )
+  );
+  seatBand.position.y = stylobateTopY + innerH - 0.35;
+  g.add(seatBand);
+
+  // ---- Doric columns on both long sides ----
+  // Taller, thicker, properly visible above the stylobate. Each is a
+  // Doric column: slightly tapered fluted shaft + echinus + abacus.
+  const colCount = 17;
+  const colH = 2.4; // tall classical proportions (~6x diameter)
+  const colR = 0.2;
+  const colStartX = -baseW / 2 + 0.3;
+  const colSpan = baseW - 0.6;
+  const colZ = baseD / 2 + 0.05; // stand just outside the inner body
+
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < colCount; i++) {
+      const colX = colStartX + (i / (colCount - 1)) * colSpan;
+
+      // Fluted Doric shaft — 20 segments for that fluted silhouette,
+      // slightly tapered (entasis) so the top is narrower than the base.
+      const shaft = nonShadow(
+        new THREE.Mesh(
+          new THREE.CylinderGeometry(colR * 0.86, colR, colH - 0.18, 20),
+          CREAM
+        )
+      );
+      shaft.position.set(colX, stylobateTopY + (colH - 0.18) / 2, side * colZ);
+      g.add(shaft);
+
+      // Echinus — bulging cushion at the top of the shaft
+      const echinus = nonShadow(
+        new THREE.Mesh(
+          new THREE.CylinderGeometry(colR * 1.18, colR * 0.86, 0.1, 16),
+          CREAM
+        )
+      );
+      echinus.position.set(colX, stylobateTopY + colH - 0.13, side * colZ);
+      g.add(echinus);
+
+      // Abacus — square slab on top of the echinus (Doric capital top)
+      const abacus = nonShadow(
+        new THREE.Mesh(
+          new THREE.BoxGeometry(colR * 2.8, 0.08, colR * 2.8),
+          CREAM
+        )
+      );
+      abacus.position.set(colX, stylobateTopY + colH - 0.04, side * colZ);
+      g.add(abacus);
+    }
+  }
+
+  // ---- Entablature running on top of the columns ----
+  // Doric entablature: smooth architrave + frieze with alternating
+  // triglyphs and metopes + projecting cornice.
+  const entabY = stylobateTopY + colH;
+
+  for (const side of [-1, 1]) {
+    // Architrave (lower smooth band)
+    const architrave = nonShadow(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(baseW + 0.2, 0.22, 0.55),
+        LIMESTONE
+      )
+    );
+    architrave.position.set(0, entabY + 0.15, side * colZ);
+    g.add(architrave);
+
+    // Frieze base (recessed metope panels)
+    const friezeBase = nonShadow(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(baseW + 0.18, 0.26, 0.52),
+        mat(0xc6b988, { roughness: 0.72 })
+      )
+    );
+    friezeBase.position.set(0, entabY + 0.39, side * colZ);
+    g.add(friezeBase);
+
+    // Triglyphs — vertical blocks aligned over each column
+    for (let i = 0; i < colCount; i++) {
+      const trX = colStartX + (i / (colCount - 1)) * colSpan;
+      const triglyph = nonShadow(
+        new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.26, 0.56), CREAM)
+      );
+      triglyph.position.set(trX, entabY + 0.39, side * colZ);
+      g.add(triglyph);
+    }
+
+    // Cornice (projecting top band)
+    const cornice = nonShadow(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(baseW + 0.35, 0.14, 0.72),
+        LIMESTONE_DARK
+      )
+    );
+    cornice.position.set(0, entabY + 0.6, side * colZ);
+    g.add(cornice);
+  }
+
+  // End-cap walls on the short sides (NW/NE corners of the stadium),
+  // tying the two colonnade runs together at the ends
+  for (const endSide of [-1, 1]) {
+    const endCap = nonShadow(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(0.5, entabY + 0.6 - stylobateTopY, baseD + 0.4),
+        LIMESTONE
+      )
+    );
+    endCap.position.set(
+      endSide * (baseW / 2 + 0.05),
+      stylobateTopY + (entabY + 0.6 - stylobateTopY) / 2,
+      0
+    );
+    g.add(endCap);
+  }
 
   // ===== 2003 SAUCER — elliptical bowl OVERHANGING the colonnade =====
   // The signature of the renovation: a UFO-shaped glass/steel bowl that
   // sits dramatically above and projects beyond the historic colonnade.
   // Built from stacked elliptical layers to make a lens / saucer shape.
-  const saucerY = 2.5; // sits above the cornice with visible gap (you can
-                       // see through the gap to the colonnade behind)
-  const saucerW = 13.5; // significantly WIDER than the base (overhangs)
+  // Sits above the entablature (top ≈ 3.0) with a visible gap so you
+  // can see between the colonnade and the saucer — the cantilever look.
+  const colonnadeTopY = entabY + 0.67; // top of the cornice
+  const stiltH = 0.55;
+  const saucerY = colonnadeTopY + stiltH; // base of saucer
+  const saucerW = 13.5; // significantly WIDER than the colonnade (overhangs)
   const saucerD = 7.5;
   const saucerH = 2.2;
 
@@ -1773,9 +1890,13 @@ function createSoldierField() {
   for (const sx of [-4, -1.5, 1.5, 4]) {
     for (const sz of [-1, 1]) {
       const stilt = nonShadow(
-        new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.6, 0.18), STEEL_DARK)
+        new THREE.Mesh(new THREE.BoxGeometry(0.18, stiltH, 0.18), STEEL_DARK)
       );
-      stilt.position.set(sx, 2.3, sz * (baseD / 2 - 0.05));
+      stilt.position.set(
+        sx,
+        colonnadeTopY + stiltH / 2,
+        sz * (baseD / 2 - 0.05)
+      );
       g.add(stilt);
     }
   }
