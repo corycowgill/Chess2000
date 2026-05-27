@@ -3410,25 +3410,24 @@ export function createLandmarks() {
   place(createWrigleyField(), -22, -18, 0.5);
   place(createWrigleyvilleRooftops(), -22, -24, 0.55);
 
-  // Other foreground landmarks
-  place(createSoldierField(), -3, -19, -0.05);
-  place(createAdlerPlanetarium(), 18, -17, -0.6);
-
-  // Midground civic icon
-  place(createWaterTower(), 6, -28, 0);
+  // Other foreground landmark on the north
+  place(createSoldierField(), 4, -19, -0.05);
 
   // Background skyscrapers
   place(createHancockLandmark(), -12, -42, 0.4);
   place(createWillisLandmark(), 8, -45, -0.05);
 
   // ──────────────────────────────────────────────
-  // SOUTH SIDE (z>0) — visible behind white's camera; whoever flips
-  // view also sees these. Filling the empty left-side gap with
-  // Buckingham Fountain (the Grant Park Rococo wedding-cake fountain).
+  // SOUTH SIDE (z>0) — the Museum Campus cluster lives here, matching
+  // Chicago's real lakefront geography. Field Museum, Adler Planetarium,
+  // and the Water Tower's plaza now share this side, with Buckingham
+  // Fountain anchoring the south-west and Marina City in the back.
   // ──────────────────────────────────────────────
-  place(createFieldMuseum(), 8, 22, -2.95);
-  place(createMarinaCity(), 0, 28, 2.6);
-  place(createBuckinghamFountain(), -18, 16, 0);
+  place(createBuckinghamFountain(), -20, 14, 0);
+  place(createWaterTower(), -3, 16, 0.3);
+  place(createFieldMuseum(), 10, 22, -2.95);
+  place(createAdlerPlanetarium(), 22, 16, -2.1);
+  place(createMarinaCity(), 2, 30, 2.6);
 
   return g;
 }
