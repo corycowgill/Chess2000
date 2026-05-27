@@ -610,12 +610,17 @@ function buildBishop(color) {
   });
   const bean = new THREE.Mesh(beanGeo, beanMat);
   bean.position.y = ped.top + 0.04; // lift so the rim sits on the inner plate
+  // Non-uniform scale: stretch along X, squash along Z, so the bean reads
+  // as the real Cloud Gate's elongated jellybean shape (~66 x 33 x 42 ft
+  // in real life — roughly 2:1 horizontal aspect) instead of an orb.
+  bean.scale.set(1.4, 1.0, 0.78);
   bean.castShadow = true;
   group.add(bean);
 
   // Subtle dark "shadow disk" inside the cavity opening — gives the
   // underside a sense of depth even when shadows are off, and reinforces
-  // the dark chamber feel under the bean.
+  // the dark chamber feel under the bean. Stretched to match the bean's
+  // elongated footprint so the opening reads as an oval, not a circle.
   const shadowDisk = new THREE.Mesh(
     new THREE.CircleGeometry(0.22, 32),
     new THREE.MeshBasicMaterial({
@@ -626,6 +631,10 @@ function buildBishop(color) {
   );
   shadowDisk.rotation.x = -Math.PI / 2;
   shadowDisk.position.y = ped.top + 0.06;
+  // Disk geometry lies in local XY; after the -π/2 X rotation, local Y
+  // maps to world -Z. So scale.x stretches world X and scale.y stretches
+  // world Z — match the bean.
+  shadowDisk.scale.set(1.4, 0.78, 1.0);
   group.add(shadowDisk);
 
   group.userData.height = ped.top + 0.04 + 0.70;
