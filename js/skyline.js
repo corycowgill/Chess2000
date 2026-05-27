@@ -308,6 +308,50 @@ function mat(color, opts = {}) {
   });
 }
 
+// Wrigley Field marquee texture: WRIGLEY FIELD header + CUBS WIN!
+// headline + HOME OF CHICAGO CUBS footer, rendered to a canvas so we
+// can map it onto the front of the marquee box. Cached once.
+let _wrigleyMarqueeTexCache = null;
+function wrigleyMarqueeTexture() {
+  if (_wrigleyMarqueeTexCache) return _wrigleyMarqueeTexCache;
+  const c = document.createElement("canvas");
+  c.width = 512;
+  c.height = 320;
+  const ctx = c.getContext("2d");
+
+  // Red field
+  ctx.fillStyle = "#b3242b";
+  ctx.fillRect(0, 0, c.width, c.height);
+
+  // Top cream band — "WRIGLEY FIELD"
+  const headerH = 70;
+  ctx.fillStyle = "#fffaee";
+  ctx.fillRect(0, 0, c.width, headerH);
+  ctx.fillStyle = "#b3242b";
+  ctx.font = 'bold 44px Georgia, "Times New Roman", serif';
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("WRIGLEY FIELD", c.width / 2, headerH / 2);
+
+  // Headline — CUBS WIN! in big bright cream
+  ctx.fillStyle = "#fffaee";
+  ctx.font = 'bold 108px Impact, "Arial Black", sans-serif';
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("CUBS WIN!", c.width / 2, 170);
+
+  // Subtitle line — HOME OF CHICAGO CUBS, smaller
+  ctx.font = 'bold 26px Georgia, "Times New Roman", serif';
+  ctx.fillText("HOME OF CHICAGO CUBS", c.width / 2, 268);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  tex.needsUpdate = true;
+  _wrigleyMarqueeTexCache = tex;
+  return tex;
+}
+
 // ---- Wrigley Field — brick stadium, green roof, manual scoreboard,
 //      red marquee at home plate. The marquee + scoreboard are the
 //      silhouette-defining features. ----
@@ -702,11 +746,24 @@ function createWrigleyField() {
   marquee.position.set(0, 1.1, 6.0);
   g.add(marquee);
 
-  const textBand = nonShadow(
-    new THREE.Mesh(new THREE.BoxGeometry(3.1, 0.5, 0.05), CREAM_LIT)
+  // Full-face marquee sign: WRIGLEY FIELD header + CUBS WIN! headline.
+  // Rendered to a CanvasTexture and mapped onto a plane sitting on the
+  // front of the marquee box.
+  const sign = nonShadow(
+    new THREE.Mesh(
+      new THREE.PlaneGeometry(3.1, 1.9),
+      new THREE.MeshStandardMaterial({
+        map: wrigleyMarqueeTexture(),
+        emissiveMap: wrigleyMarqueeTexture(),
+        emissive: 0xffffff,
+        emissiveIntensity: 0.45,
+        roughness: 0.5,
+        metalness: 0.05,
+      })
+    )
   );
-  textBand.position.set(0, 1.55, 6.28);
-  g.add(textBand);
+  sign.position.set(0, 1.15, 6.281);
+  g.add(sign);
 
   // Inverted-V point on the bottom of the marquee
   const pointGeo = new THREE.BufferGeometry();
